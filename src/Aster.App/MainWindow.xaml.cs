@@ -51,7 +51,7 @@ public partial class MainWindow : Window
         GlassSlider.Value=p.GlassOpacity;IslandScaleSlider.Value=p.IslandScale;
         StiffnessBox.Text=p.SpringStiffness.ToString(System.Globalization.CultureInfo.InvariantCulture);DampingBox.Text=p.SpringDamping.ToString(System.Globalization.CultureInfo.InvariantCulture);MassBox.Text=p.SpringMass.ToString(System.Globalization.CultureInfo.InvariantCulture);
         AutoStowCheck.IsChecked=p.AutoStowMaximized;VolumeKeysCheck.IsChecked=p.ReplaceVolumeKeys;BrightnessKeysCheck.IsChecked=p.ReplaceBrightnessKeys;
-        SpotifyWallpaperCheck.IsChecked=p.SpotifyWallpaper;TaskbarGlassCheck.IsChecked=p.TaskbarGlass;TaskbarTintSlider.Value=p.TaskbarTintOpacity;ShineSlider.Value=p.GlassShine;
+        DockBrowserCheck.IsChecked=p.DockBrowserShortcut;CustomDockCheck.IsChecked=p.CustomDock;DockScaleSlider.Value=p.DockScale;SpotifyWallpaperCheck.IsChecked=p.SpotifyWallpaper;TaskbarGlassCheck.IsChecked=p.TaskbarGlass;TaskbarTintSlider.Value=p.TaskbarTintOpacity;ShineSlider.Value=p.GlassShine;
     }
     private void SaveAppearance(object sender, RoutedEventArgs e)
     {
@@ -70,7 +70,7 @@ public partial class MainWindow : Window
             ShowMedia = MediaCheck.IsChecked == true, ShowBattery = BatteryCheck.IsChecked == true, ReducedMotion = MotionCheck.IsChecked == true
             ,GlassOpacity=GlassSlider.Value,IslandScale=IslandScaleSlider.Value,SpringStiffness=stiffness,SpringDamping=damping,SpringMass=mass
             ,AutoStowMaximized=AutoStowCheck.IsChecked==true,ReplaceVolumeKeys=VolumeKeysCheck.IsChecked==true,ReplaceBrightnessKeys=BrightnessKeysCheck.IsChecked==true
-            ,SpotifyWallpaper=SpotifyWallpaperCheck.IsChecked==true,TaskbarGlass=TaskbarGlassCheck.IsChecked==true,TaskbarTintOpacity=(int)TaskbarTintSlider.Value,GlassShine=ShineSlider.Value
+            ,DockBrowserShortcut=DockBrowserCheck.IsChecked==true,CustomDock=CustomDockCheck.IsChecked==true,DockScale=DockScaleSlider.Value,SpotifyWallpaper=SpotifyWallpaperCheck.IsChecked==true,TaskbarGlass=TaskbarGlassCheck.IsChecked==true,TaskbarTintOpacity=(int)TaskbarTintSlider.Value,GlassShine=ShineSlider.Value
         });
     }
     private void ResetAppearance(object sender, RoutedEventArgs e) { model.UpdatePreferences(new Preferences()); LoadAppearance(); }

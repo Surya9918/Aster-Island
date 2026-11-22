@@ -48,7 +48,7 @@ public sealed class DesktopIntegration:IDisposable
     {
         var p=model.Preferences;
         if(keys is not null){keys.VolumeEnabled=p.ReplaceVolumeKeys;keys.BrightnessEnabled=p.ReplaceBrightnessKeys;keys.DimKey=p.BrightnessDownKey;keys.BrightenKey=p.BrightnessUpKey;}
-        if(p.TaskbarGlass){taskbar.Apply(p.TaskbarTintOpacity);model.SetTaskbarStatus(taskbar.Status,taskbar.CanTint);}
+        if(p.TaskbarGlass&&!p.CustomDock){taskbar.Apply(p.TaskbarTintOpacity);model.SetTaskbarStatus(taskbar.Status,taskbar.CanTint);}
         else{taskbar.Restore();model.SetTaskbarStatus(taskbar.Status);}
         ReadForeground();
     }
@@ -58,7 +58,7 @@ public sealed class DesktopIntegration:IDisposable
         var hwnd=new WindowInteropHelper(island).Handle;var f=ForegroundService.Read(hwnd);
         // Activating the island for a peek must not erase the previous foreground-app stow policy.
         if(!f.OwnWindow||!f.AnyApplicationVisible)island.Machine.SetStowed(launchReveal.AllowStow(ForegroundPolicy.ShouldStow(model.Preferences.AutoStowMaximized,f.OwnWindow,f.ShellWindow,f.Maximized,f.Fullscreen,f.AnyApplicationVisible)));
-        if(++taskbarTicks%15==0&&model.Preferences.TaskbarGlass){taskbar.Apply(model.Preferences.TaskbarTintOpacity);model.SetTaskbarStatus(taskbar.Status,taskbar.CanTint);}
+        if(++taskbarTicks%15==0&&model.Preferences.TaskbarGlass&&!model.Preferences.CustomDock){taskbar.Apply(model.Preferences.TaskbarTintOpacity);model.SetTaskbarStatus(taskbar.Status,taskbar.CanTint);}
     }
     private void Learn(bool up)
     {

@@ -1,11 +1,11 @@
+# Paused custom dock work
+
+This branch preserves unfinished dock development. It is not the installed release. Taskbar features remain off; development is paused at the user's request. See docs/DOCK-WORK-IN-PROGRESS.md. The main branch contains the current startup-fixed application.
+
 # Aster Island
 
 A native ARM64 desktop island for Windows: a compact floating pill that expands into local music controls, a focus timer, a file shelf, notes and sound controls. Settings and additional local tools open separately. Original source and vector artwork; no proprietary app binaries or assets are used.
 
-
-## Current status
-
-Includes the startup visibility fix (95 unit checks plus a real WPF startup/hide/reopen probe). Taskbar customization is off. The unfinished custom dock is preserved separately on the `dock-work-in-progress` branch. See [startup fix](docs/STARTUP-VISIBILITY-FIX.md).
 
 ## Current glass update
 
@@ -28,7 +28,7 @@ Extract **Aster-Glass-win-arm64.zip** into a folder you own and open **Aster.App
 - Touch handlers support tap, long press, vertical expand/collapse and horizontal activity swipes. Physical touch and precision-trackpad gesture validation remains pending.
 - Use the settings icon or tray menu for settings and additional tools. Closing settings hides it. Use the tray's Quit Aster to exit.
 
-The island stays above ordinary windows; it is not an exclusive-fullscreen game overlay. Hide suppresses the island for the current session. New launches restore the compact island automatically; the tray or shortcut also restores it and saves the visible preference.
+The island stays above ordinary windows; it is not an exclusive-fullscreen game overlay. A saved Hide setting suppresses it; the tray or shortcut can restore it.
 
 ## Customize
 

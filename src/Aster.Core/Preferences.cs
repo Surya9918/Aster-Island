@@ -31,6 +31,10 @@ public sealed record Preferences
     public bool ReplaceBrightnessKeys { get; init; }
     public int BrightnessDownKey { get; init; }
     public int BrightnessUpKey { get; init; }
+    public bool CustomDock {get;init;}
+    public bool DockBrowserShortcut {get;init;}=true;
+    public double DockScale {get;init;}=1;
+    public List<string> DockPinnedPaths {get;init;}=[];
     public bool SpotifyWallpaper {get;init;}
     public bool TaskbarGlass { get; init; }
     public int TaskbarTintOpacity { get; init; } = 110;
@@ -58,6 +62,8 @@ public sealed record Preferences
         ,BrightnessUpKey=HardwareKeyPolicy.IsAssignableBrightnessKey(BrightnessUpKey)?BrightnessUpKey:0
         ,TaskbarTintOpacity=Math.Clamp(TaskbarTintOpacity,40,220)
         ,GlassShine=Clamp(GlassShine,.4,2,1.4)
+        ,DockScale=Clamp(DockScale,.75,1.25,1)
+        ,DockPinnedPaths=(DockPinnedPaths??[]).Where(DockPolicy.IsLocalLaunchPath).Distinct(StringComparer.OrdinalIgnoreCase).Take(12).ToList()
     };
     private static double Clamp(double value, double min, double max, double fallback) =>
         double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
