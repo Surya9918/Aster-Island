@@ -27,7 +27,7 @@ public partial class App : Application
         {try{await TaskbarProbe.RunAsync(e.Args[1]);Shutdown(0);}catch{Shutdown(1);}return;}
         if(e.Args.Length==1&&e.Args[0]=="--foreground-helper")
         {var helper=new Window{Title="Aster maximized-window test",ShowInTaskbar=true,Background=Brushes.Black};helper.Loaded+=(_,_)=>{helper.WindowState=WindowState.Maximized;helper.Activate();};helper.Show();helper.Activate();await System.Threading.Tasks.Task.Delay(2200);helper.Close();Shutdown();return;}
-        var startupTest=e.Args.Length==2&&e.Args[0]=="--startup-test";
+        var startupTest=e.Args.Length==2&&(e.Args[0]=="--startup-test"||e.Args[0]=="--shelf-test");
         var visual=e.Args.Length==2&&e.Args[0]=="--visual-test";
         var deviceTest=e.Args.Length==2&&e.Args[0]=="--device-test";
         var uiTest=Array.IndexOf(e.Args,"--ui-test")>=0;
@@ -60,7 +60,7 @@ public partial class App : Application
         overlay.Show();overlay.Place(model.Preferences);overlay.SetVisible(model.Preferences.ShowOverlay);
         if(startupTest)
         {
-            try{await StartupProbe.RunAsync(overlay,model,OpenIsland,e.Args[1]);Quit();}
+            try{if(e.Args[0]=="--shelf-test")await ShelfProbe.RunAsync(overlay,model,e.Args[1]);else await StartupProbe.RunAsync(overlay,model,OpenIsland,e.Args[1]);Quit();}
             catch(Exception error){Directory.CreateDirectory(e.Args[1]);await File.WriteAllTextAsync(Path.Combine(e.Args[1],"failure.txt"),error.ToString());Quit();Environment.ExitCode=1;}
             return;
         }
