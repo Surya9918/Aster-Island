@@ -20,12 +20,9 @@ internal static class DeviceIntegrationProbe
         try{brightness=await Task.Run(BrightnessService.Read);}catch{brightness=null;report["brightnessProvider"]="unavailable";}
         try
         {
-            // A visible, short-lived test window is required to exercise real foreground/maximize behavior.
-            var helper=Process.Start(new ProcessStartInfo(Environment.ProcessPath!,"--foreground-helper"){UseShellExecute=false,WindowStyle=ProcessWindowStyle.Normal});
-            await Task.Delay(1000);report["maximizedForegroundStows"]=island.Machine.Target==IslandState.Stowed;
-            report["foregroundReading"]=ForegroundService.Read(new System.Windows.Interop.WindowInteropHelper(island).Handle);report["foregroundTestState"]=island.Machine.Target.ToString();
-            Capture(island,Path.ChangeExtension(path,"stowed.png"));
-            if(helper is not null)await helper.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.Delay(2400);integration.RecoverDeviceIntegrations();await Task.Delay(2400);
+            report["audioReadinessRecovered"]=integration.VolumeControlReady;
+            report["brightnessReadinessRecovered"]=brightness is null||integration.BrightnessControlReady;
             island.OpenIsland();await Task.Delay(500);
             var external=Math.Clamp(volume.Volume+(volume.Volume>.96?-.02f:.02f),0,1);AudioService.SetVolume(external);await Task.Delay(350);
             report["externalVolumeCallbackObserved"]=Math.Abs(model.Volume-Math.Round(external*100))<1;
@@ -43,6 +40,11 @@ internal static class DeviceIntegrationProbe
                 report["brightnessEventObserved"]=model.Brightness==value;
                 report["brightnessHudShown"]=island.Machine.Target==IslandState.SystemHud&&island.Machine.HudKind==SystemHudKind.Brightness;
                 Capture(island,Path.ChangeExtension(path,"brightness.png"));
+                var keyCount=integration.HandledKeyCount;ushort arrow=(ushort)(value>=95?0x28:0x26);
+                try{Send(0x11,false);Send(0x12,false);Send(arrow,false);Send(arrow,true);}finally{Send(0x12,true);Send(0x11,true);}
+                await Task.Delay(650);report["brightnessShortcutIntercepted"]=integration.HandledKeyCount>keyCount;
+                report["brightnessShortcutHudShown"]=island.Machine.Target==IslandState.SystemHud&&island.Machine.HudKind==SystemHudKind.Brightness;
+
             }
             report["brightnessHardwareSuppression"]="Firmware keys require learning/on-device verification; no global suppression claim";
             report["hardwareStatus"]=model.HardwareStatus;
@@ -53,6 +55,8 @@ internal static class DeviceIntegrationProbe
             if(AudioService.Read().Muted!=volume.Muted)AudioService.ToggleMute();
             if(brightness is { } initial)await Task.Run(()=>BrightnessService.Set(initial));
         }
+        report["originalVolumeRestored"]=Math.Abs(AudioService.Read().Volume-volume.Volume)<.001;
+        report["originalBrightnessRestored"]=brightness is null||BrightnessService.Read()==brightness;
         island.Machine.Expand(IslandPage.Controls);await Task.Delay(900);Capture(island,Path.ChangeExtension(path,"controls.png"));
         island.Machine.Select(IslandPage.Today);await Task.Delay(800);Capture(island,Path.ChangeExtension(path,"today.png"));
         await File.WriteAllTextAsync(path,JsonSerializer.Serialize(report,new JsonSerializerOptions{WriteIndented=true}));

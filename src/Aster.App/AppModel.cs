@@ -218,16 +218,16 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
         Changed(nameof(AudioState)); Changed(nameof(AudioAvailable));
     }
     public void SetVolume(double value) { try { AudioService.SetVolume((float)(value / 100)); Volume = value; } catch { Error("VOLUME_FAILED", "Volume could not be changed."); } }
-    public void ReceiveAudio(AudioReading value)
+    public void ReceiveAudio(AudioReading value,bool forceHud=false)
     {
-        var percent=Math.Round(value.Volume*100);var changed=Math.Abs(Volume-percent)>.1||outputMuted!=value.Muted;
+        var percent=Math.Round(value.Volume*100);var changed=AudioAvailable&&(Math.Abs(Volume-percent)>.1||outputMuted!=value.Muted);AudioAvailable=true;Changed(nameof(AudioAvailable));
         Volume=percent;outputMuted=value.Muted;AudioState=value.Muted?"Output muted":"System output volume";Changed(nameof(AudioState));Changed(nameof(MuteTile));
-        if(changed)SystemLevelChanged?.Invoke(SystemHudKind.Volume,percent,value.Muted);
+        if(changed||forceHud)SystemLevelChanged?.Invoke(SystemHudKind.Volume,percent,value.Muted);
     }
-    public void ReceiveBrightness(int value)
+    public void ReceiveBrightness(int value,bool forceHud=false)
     {
-        var changed=Brightness!=value;Brightness=Math.Clamp(value,0,100);Changed(nameof(Brightness));Changed(nameof(BrightnessState));Changed(nameof(BrightnessAvailable));
-        if(changed)SystemLevelChanged?.Invoke(SystemHudKind.Brightness,value,false);
+        var changed=Brightness.HasValue&&Brightness!=value;Brightness=Math.Clamp(value,0,100);Changed(nameof(Brightness));Changed(nameof(BrightnessState));Changed(nameof(BrightnessAvailable));
+        if(changed||forceHud)SystemLevelChanged?.Invoke(SystemHudKind.Brightness,value,false);
     }
     public void SetTaskbarStatus(string value,bool tint=false){TaskbarStatus=value;TaskbarTintAvailable=tint;Changed(nameof(TaskbarStatus));Changed(nameof(TaskbarTintAvailable));}
     public void SetHardwareStatus(string value){HardwareStatus=value;Changed(nameof(HardwareStatus));}

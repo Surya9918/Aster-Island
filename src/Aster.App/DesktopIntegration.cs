@@ -17,23 +17,25 @@ public sealed class DesktopIntegration:IDisposable
     private readonly AppModel model;private readonly OverlayWindow island;private readonly Dispatcher dispatcher;
     private readonly Channel<HardwareAction> actions=Channel.CreateBounded<HardwareAction>(new BoundedChannelOptions(48){FullMode=BoundedChannelFullMode.DropOldest,SingleReader=true});
     private readonly CancellationTokenSource stop=new();private readonly TaskbarMaterialService taskbar=new();
-    private readonly DispatcherTimer foreground,learningTimeout;
+    private readonly DispatcherTimer foreground,learningTimeout,deviceHealth;
+    private IDisposable? outputDevices;private volatile bool rebindAudio=true;private bool healthBusy;
     private SpotifyWallpaperController? wallpaper;
     private HardwareKeys? keys;private IDisposable? audio,brightness;
     private bool learningUp;private volatile bool disposed,volumeReady,brightnessReady;private int taskbarTicks;
     public int HandledKeyCount=>keys?.HandledCount??0;
+    public bool VolumeControlReady=>volumeReady;public bool BrightnessControlReady=>brightnessReady;
     public DesktopIntegration(AppModel model,OverlayWindow island)
     {
         this.model=model;this.island=island;dispatcher=Dispatcher.CurrentDispatcher;
         foreground=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(400)};foreground.Tick+=(_,_)=>ReadForeground();
+        deviceHealth=new DispatcherTimer{Interval=TimeSpan.FromSeconds(2)};deviceHealth.Tick+=async(_,_)=>await RefreshDeviceHealthAsync();
         learningTimeout=new DispatcherTimer{Interval=TimeSpan.FromSeconds(12)};learningTimeout.Tick+=(_,_)=>{learningTimeout.Stop();if(keys is not null)keys.Learning=false;model.SetHardwareStatus("No interceptable brightness key detected. Ctrl+Alt+Up/Down remains available.");};
     }
     public async Task StartAsync()
     {
         wallpaper=new(model);
         volumeReady=model.AudioAvailable;brightnessReady=model.Brightness.HasValue;
-        try{audio=AudioService.Watch(reading=>dispatcher.BeginInvoke(()=>{if(!disposed)model.ReceiveAudio(reading);}));}catch{model.Log.Record("AUDIO_WATCH_UNAVAILABLE");}
-        try{brightness=await Task.Run(()=>new BrightnessWatcher(value=>dispatcher.BeginInvoke(()=>{if(!disposed)model.ReceiveBrightness(value);})));}catch{model.Log.Record("BRIGHTNESS_WATCH_UNAVAILABLE");}
+        try{outputDevices=AudioDeviceService.Watch(()=>rebindAudio=true);}catch{model.Log.Record("AUDIO_DEVICE_WATCH_UNAVAILABLE");}
         try
         {
             keys=new HardwareKeys{CanHandle=action=>island.Machine.Target!=IslandState.Hidden&&(action is HardwareAction.BrightnessDown or HardwareAction.BrightnessUp?brightnessReady:volumeReady),ActionRequested=action=>actions.Writer.TryWrite(action)};
@@ -42,8 +44,35 @@ public sealed class DesktopIntegration:IDisposable
         }
         catch{model.SetHardwareStatus("Keyboard interception unavailable; Windows keeps handling your keys.");model.Log.Record("MEDIA_HOOK_UNAVAILABLE");}
         model.AppearanceChanged+=ApplyPreferences;model.LearnBrightnessRequested+=Learn;
-        ApplyPreferences();foreground.Start();_ =ProcessActionsAsync();
+        ApplyPreferences();foreground.Start();deviceHealth.Start();_ =ProcessActionsAsync();await RefreshDeviceHealthAsync();
     }
+    private async Task RefreshDeviceHealthAsync()
+    {
+        if(disposed||healthBusy)return;healthBusy=true;
+        try
+        {
+            AudioReading? currentAudio=null;int? currentBrightness=null;
+            await Task.Run(()=>{try{currentAudio=AudioService.Read();}catch{}try{currentBrightness=BrightnessService.Read();}catch{}});
+            if(disposed)return;
+            volumeReady=currentAudio is not null;if(!volumeReady)rebindAudio=true;brightnessReady=currentBrightness.HasValue;
+            if(currentAudio is not null)model.ReceiveAudio(currentAudio);
+            if(currentBrightness is { } level)model.ReceiveBrightness(level);
+            if(volumeReady&&(rebindAudio||audio is null))
+            {
+                rebindAudio=false;audio?.Dispose();audio=null;
+                try{audio=AudioService.Watch(value=>dispatcher.BeginInvoke(()=>{if(!disposed){volumeReady=true;model.ReceiveAudio(value);}}));}catch{rebindAudio=true;}
+            }
+            if(brightness is null&&brightnessReady)
+            {
+                IDisposable? subscription=null;
+                try{subscription=await Task.Run(()=>new BrightnessWatcher(value=>dispatcher.BeginInvoke(()=>{if(!disposed){brightnessReady=true;model.ReceiveBrightness(value);}})));}
+                catch{/* Polling remains active while the Windows event provider recovers. */}
+                if(disposed)subscription?.Dispose();else brightness=subscription;
+            }
+        }
+        finally{healthBusy=false;}
+    }
+    public void RecoverDeviceIntegrations(){if(disposed)return;volumeReady=brightnessReady=false;rebindAudio=true;brightness?.Dispose();brightness=null;_ =RefreshDeviceHealthAsync();}
     public void ApplyPreferences()
     {
         var p=model.Preferences;
@@ -85,13 +114,13 @@ public sealed class DesktopIntegration:IDisposable
                     {
                         var current=BrightnessService.Read()??throw new NotSupportedException();
                         var value=Math.Clamp(current+(action==HardwareAction.BrightnessUp?5:-5),0,100);BrightnessService.Set(value);
-                        await dispatcher.InvokeAsync(()=>{if(!disposed)model.ReceiveBrightness(value);});
+                        await dispatcher.InvokeAsync(()=>{if(!disposed)model.ReceiveBrightness(value,true);});
                     }
                     else
                     {
                         var value=AudioService.Read();
                         if(action==HardwareAction.VolumeMute)AudioService.ToggleMute();else AudioService.SetVolume(value.Volume+(action==HardwareAction.VolumeUp?.02f:-.02f));
-                        var updated=AudioService.Read();await dispatcher.InvokeAsync(()=>{if(!disposed)model.ReceiveAudio(updated);});
+                        var updated=AudioService.Read();await dispatcher.InvokeAsync(()=>{if(!disposed)model.ReceiveAudio(updated,true);});
                     }
                 }
                 catch
@@ -105,7 +134,7 @@ public sealed class DesktopIntegration:IDisposable
     }
     public void Dispose()
     {
-        if(disposed)return;disposed=true;foreground.Stop();learningTimeout.Stop();model.AppearanceChanged-=ApplyPreferences;model.LearnBrightnessRequested-=Learn;
+        if(disposed)return;disposed=true;foreground.Stop();deviceHealth.Stop();outputDevices?.Dispose();learningTimeout.Stop();model.AppearanceChanged-=ApplyPreferences;model.LearnBrightnessRequested-=Learn;
         wallpaper?.Dispose();keys?.Dispose();audio?.Dispose();brightness?.Dispose();actions.Writer.TryComplete();stop.Cancel();taskbar.Dispose();stop.Dispose();
     }
 }

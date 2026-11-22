@@ -7,7 +7,7 @@ public static class AudioDeviceService
  public static IReadOnlyList<OutputEndpoint> Read()
  {
   Enumerator? owner=null;ICollection? devices=null;IDevice? current=null;var result=new List<OutputEndpoint>();
-  try{owner=(Enumerator)new DeviceEnumerator();string selected="";if(owner.GetDefaultAudioEndpoint(0,0,out current)>=0){Check(current.GetId(out selected));Marshal.ReleaseComObject(current);current=null;}
+  try{owner=(Enumerator)CoreAudioFactory.CreateEnumerator();string selected="";if(owner.GetDefaultAudioEndpoint(0,0,out current)>=0){Check(current.GetId(out selected));Marshal.ReleaseComObject(current);current=null;}
    Check(owner.EnumAudioEndpoints(0,15,out devices));Check(devices.GetCount(out uint count));
    for(uint i=0;i<count;i++){IDevice? device=null;IProperties? props=null;try{
     Check(devices.Item(i,out device));Check(device.GetId(out var id));Check(device.GetState(out uint state));Check(device.OpenPropertyStore(0,out props));
@@ -22,7 +22,6 @@ public static class AudioDeviceService
  [DllImport("ole32.dll")]static extern int PropVariantClear(ref Variant v);
  [StructLayout(LayoutKind.Sequential)]public struct Key(Guid format,uint id){public Guid Format=format;public uint Id=id;}
  [StructLayout(LayoutKind.Explicit,Size=24)]public struct Variant{[FieldOffset(0)]public ushort Type;[FieldOffset(8)]public IntPtr Pointer;[FieldOffset(8)]public uint Number;}
- [ComImport,Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]class DeviceEnumerator{}
  [ComImport,Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"),InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]interface Enumerator{
  [PreserveSig]int EnumAudioEndpoints(int flow,uint state,out ICollection devices);[PreserveSig]int GetDefaultAudioEndpoint(int flow,int role,out IDevice device);[PreserveSig]int GetDevice([MarshalAs(UnmanagedType.LPWStr)]string id,out IDevice device);[PreserveSig]int RegisterEndpointNotificationCallback([MarshalAs(UnmanagedType.Interface)]INotify callback);[PreserveSig]int UnregisterEndpointNotificationCallback([MarshalAs(UnmanagedType.Interface)]INotify callback);}
  [ComImport,Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"),InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]interface ICollection{[PreserveSig]int GetCount(out uint count);[PreserveSig]int Item(uint index,out IDevice device);}
@@ -31,6 +30,6 @@ public static class AudioDeviceService
  [ComVisible(true),Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0"),InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]public interface INotify{[PreserveSig]int OnDeviceStateChanged([MarshalAs(UnmanagedType.LPWStr)]string id,uint state);[PreserveSig]int OnDeviceAdded([MarshalAs(UnmanagedType.LPWStr)]string id);[PreserveSig]int OnDeviceRemoved([MarshalAs(UnmanagedType.LPWStr)]string id);[PreserveSig]int OnDefaultDeviceChanged(int flow,int role,[MarshalAs(UnmanagedType.LPWStr)]string? id);[PreserveSig]int OnPropertyValueChanged([MarshalAs(UnmanagedType.LPWStr)]string id,Key key);}
  [ComVisible(true),ClassInterface(ClassInterfaceType.None)]sealed class Callback(Action changed):INotify{
  int Signal(){try{changed();}catch{}return 0;}public int OnDeviceStateChanged(string id,uint state)=>Signal();public int OnDeviceAdded(string id)=>Signal();public int OnDeviceRemoved(string id)=>Signal();public int OnDefaultDeviceChanged(int flow,int role,string? id)=>flow==0?Signal():0;public int OnPropertyValueChanged(string id,Key key)=>Signal();}
- sealed class Subscription:IDisposable{Enumerator? owner;readonly Callback callback;public Subscription(Action changed){callback=new(changed);try{owner=(Enumerator)new DeviceEnumerator();Check(owner.RegisterEndpointNotificationCallback(callback));}catch{Dispose();throw;}}public void Dispose(){if(owner is null)return;owner.UnregisterEndpointNotificationCallback(callback);Marshal.ReleaseComObject(owner);owner=null;GC.KeepAlive(callback);}}
+ sealed class Subscription:IDisposable{Enumerator? owner;readonly Callback callback;public Subscription(Action changed){callback=new(changed);try{owner=(Enumerator)CoreAudioFactory.CreateEnumerator();Check(owner.RegisterEndpointNotificationCallback(callback));}catch{Dispose();throw;}}public void Dispose(){if(owner is null)return;owner.UnregisterEndpointNotificationCallback(callback);Marshal.ReleaseComObject(owner);owner=null;GC.KeepAlive(callback);}}
 }
 

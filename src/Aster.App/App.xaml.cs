@@ -29,7 +29,7 @@ public partial class App : Application
         if(e.Args.Length==1&&e.Args[0]=="--foreground-helper")
         {var helper=new Window{Title="Aster maximized-window test",ShowInTaskbar=true,Background=Brushes.Black};helper.Loaded+=(_,_)=>{helper.WindowState=WindowState.Maximized;helper.Activate();};helper.Show();helper.Activate();await System.Threading.Tasks.Task.Delay(2200);helper.Close();Shutdown();return;}
         if(e.Args.Length==2&&e.Args[0]=="--audio-probe")
-        {try{var endpoints=await System.Threading.Tasks.Task.Run(Aster.Platform.Windows.AudioDeviceService.Read);using var watch=Aster.Platform.Windows.AudioDeviceService.Watch(()=>{});await File.WriteAllTextAsync(e.Args[1],System.Text.Json.JsonSerializer.Serialize(new{nativeEnumeration=true,nativeSubscription=true,endpoints=endpoints.Count,headphoneEndpoints=endpoints.Count(x=>x.Headphone),activeOutputs=endpoints.Count(x=>x.Active)}));Shutdown(0);}catch(Exception error){await File.WriteAllTextAsync(e.Args[1]+".failure",error.ToString());Shutdown(1);}return;}
+        {try{var endpoints=await System.Threading.Tasks.Task.Run(Aster.Platform.Windows.AudioDeviceService.Read);using var watch=Aster.Platform.Windows.AudioDeviceService.Watch(()=>{});var volume=Aster.Platform.Windows.AudioService.Read();using var volumeWatch=Aster.Platform.Windows.AudioService.Watch(_=>{});await File.WriteAllTextAsync(e.Args[1],System.Text.Json.JsonSerializer.Serialize(new{nativeEnumeration=true,nativeSubscription=true,volumeServiceAfterDeviceDiscovery=true,volumeWatchAfterDeviceDiscovery=true,endpoints=endpoints.Count,headphoneEndpoints=endpoints.Count(x=>x.Headphone),activeOutputs=endpoints.Count(x=>x.Active)}));Shutdown(0);}catch(Exception error){await File.WriteAllTextAsync(e.Args[1]+".failure",error.ToString());Shutdown(1);}return;}
         var startupTest=e.Args.Length==2&&(e.Args[0]=="--startup-test"||e.Args[0]=="--shelf-test"||e.Args[0]=="--notification-test"||e.Args[0]=="--notification-live-test"||e.Args[0]=="--quality-test"||e.Args[0]=="--night-test");
         var visual=e.Args.Length==2&&e.Args[0]=="--visual-test";
         var deviceTest=e.Args.Length==2&&e.Args[0]=="--device-test";
@@ -60,7 +60,7 @@ public partial class App : Application
         menu.Items.Add("Hide island",null,(_,_)=>Dispatcher.Invoke(()=>model.UpdatePreferences(model.Preferences with{ShowOverlay=false})));
         menu.Items.Add("Quit Aster",null,(_,_)=>Dispatcher.Invoke(Quit));
         tray.ContextMenuStrip=menu;tray.DoubleClick+=(_,_)=>Dispatcher.Invoke(OpenIsland);
-        SystemEvents.DisplaySettingsChanged+=DisplayChanged;SystemEvents.SessionSwitch+=SessionChanged;
+        SystemEvents.DisplaySettingsChanged+=DisplayChanged;SystemEvents.SessionSwitch+=SessionChanged;SystemEvents.PowerModeChanged+=PowerChanged;
         overlay.Show();overlay.Place(model.Preferences);overlay.SetVisible(model.Preferences.ShowOverlay);
         if(Array.IndexOf(e.Args,"--connect-notifications")>=0){overlay.Machine.Expand(Aster.Core.IslandPage.Notifications);overlay.Activate();model.ConnectNotificationsCommand.Execute(null);}
         if(startupTest)
@@ -76,7 +76,7 @@ public partial class App : Application
         }
         else
         {
-            await model.StartAsync();desktop=new(model,overlay);await desktop.StartAsync();
+            desktop=new(model,overlay);var deviceStartup=desktop.StartAsync();await model.StartAsync();await deviceStartup;
             if(deviceTest){try{await DeviceIntegrationProbe.RunAsync(model,overlay,desktop,e.Args[1]);}catch(Exception error){await File.WriteAllTextAsync(e.Args[1]+".failure",error.ToString());}finally{Quit();}}
         }
     }
@@ -91,6 +91,7 @@ public partial class App : Application
         if(center is null){center=new(model){Title="Aster · Settings & local tools"};center.Opacity=model.Preferences.Opacity;}
         center.Show();if(center.WindowState==WindowState.Minimized)center.WindowState=WindowState.Normal;center.Activate();
     }
+    private void PowerChanged(object sender,PowerModeChangedEventArgs e){if(e.Mode==PowerModes.Resume)Dispatcher.BeginInvoke(()=>desktop?.RecoverDeviceIntegrations());}
     private void SessionChanged(object sender,SessionSwitchEventArgs e)=>Dispatcher.BeginInvoke(()=>{if(e.Reason==SessionSwitchReason.SessionLock){model?.LockNotifications(true);overlay?.ClearNotificationPrivacy();overlay?.Machine.SetHidden(true);}else if(e.Reason==SessionSwitchReason.SessionUnlock){model?.LockNotifications(false);if(model?.Preferences.ShowOverlay==true)overlay?.SetVisible(true);}});
     private void DisplayChanged(object? sender,EventArgs args)=>Dispatcher.BeginInvoke(()=>{if(model is not null&&!quitting)overlay?.Place(model.Preferences);});
     private void ApplyAppearance()
@@ -119,7 +120,7 @@ public partial class App : Application
     private void Quit()
     {
         if(quitting)return;quitting=true;ListenClipboard(false);if(hotkey)UnregisterHotKey(handle,1);
-        source?.RemoveHook(WindowMessage);SystemEvents.DisplaySettingsChanged-=DisplayChanged;SystemEvents.SessionSwitch-=SessionChanged;desktop?.Dispose();tray?.Dispose();tray=null;model?.Dispose();
+        source?.RemoveHook(WindowMessage);SystemEvents.DisplaySettingsChanged-=DisplayChanged;SystemEvents.SessionSwitch-=SessionChanged;SystemEvents.PowerModeChanged-=PowerChanged;desktop?.Dispose();tray?.Dispose();tray=null;model?.Dispose();
         if(center is not null)center.Exiting=true;if(overlay is not null)overlay.Exiting=true;overlay?.Close();center?.Close();Shutdown();
     }
     protected override void OnExit(ExitEventArgs e){if(!quitting){desktop?.Dispose();tray?.Dispose();model?.Dispose();}if(ownsMutex)mutex?.ReleaseMutex();mutex?.Dispose();base.OnExit(e);}
