@@ -75,7 +75,7 @@ public sealed class GlassSurface : FrameworkElement
             if(label.Length>0)Text(dc,label,13.5,white,new(r.X+47,r.Y+r.Height/2-10),r.Width-125);
             if(active?.Kind==ActivityKind.Focus){Text(dc,model.TimerText,12.5,mint,new(r.Right-75,r.Y+r.Height/2-9),56);dc.DrawEllipse(mint,null,new(r.Right-20,r.Y+r.Height/2),2.5,2.5);}
             else if(active?.Kind==ActivityKind.Media&&model.MediaPlaying){for(var i=0;i<5;i++){var h=4+10*(.5+.5*Math.Sin(clock*4+i*1.6));dc.DrawRoundedRectangle(mint,null,new Rect(r.Right-45+i*4,r.Y+r.Height/2-h/2,2,h),1,1);}}
-            else if(model.Preferences.ShowClock)Text(dc,model.ClockText,12,muted,new(model.Preferences.EyesVisible?r.Right-62:r.X+r.Width/2-25,r.Y+r.Height/2-9),50);
+            else if(model.Preferences.ShowClock){double clockWidth=model.Preferences.Use12HourClock?76:50;Text(dc,model.ClockText,12,muted,new(model.Preferences.EyesVisible?r.Right-clockWidth-12:r.X+r.Width/2-clockWidth/2,r.Y+r.Height/2-9),clockWidth);}
             dc.Pop();
         }
         if(model.FocusRunning&&r.Height<100&&state.Target is not(IslandState.Notification or IslandState.SystemHud))

@@ -5,7 +5,7 @@ A native ARM64 desktop island for Windows: a compact floating pill that expands 
 
 ## Make it yours
 
-The gear now opens a simple, searchable settings panel with a live resting-island preview. Look & feel, Eyes, Activities, Alerts and Privacy & startup contain plain-language controls, scoped resets and safe undo. Advanced local tools remain separate. See [personalization](docs/PERSONALIZATION.md) and [current polish validation](docs/POLISH-VALIDATION.md). Current suite: **113 automated checks**; native ARM64 build. The interface is original but is not claimed to be impossible to imitate.
+The gear now opens a simple, searchable settings panel with a live resting-island preview. Look & feel, Eyes, Activities, Alerts and Privacy & startup contain plain-language controls, scoped resets and safe undo. Advanced local tools remain separate. See [personalization](docs/PERSONALIZATION.md) and [current polish validation](docs/POLISH-VALIDATION.md). Current suite: **114 automated checks**; native ARM64 build. The interface is original but is not claimed to be impossible to imitate.
 
 ## Living monochrome island · 120 Hz
 
@@ -88,7 +88,7 @@ src/
   Aster.Platform.Windows/     native audio, battery, brightness, Windows media sessions
   Aster.App/                  island window, vector glass, retained activity views, settings
 tests/
-  Aster.Tests/                113 executable automated tests
+  Aster.Tests/                114 executable automated tests
   visual-baselines/           reviewed own-window renders
 scripts/                     build, PE/source audit, visual regression and preview tools
 docs/                        inventory, architecture, privacy, validation and troubleshooting

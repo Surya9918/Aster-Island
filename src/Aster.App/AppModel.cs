@@ -37,7 +37,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     private int ticks;private string lastClock="",lastDate="";
     private string status = "Ready. Local features work offline.";
     public string Status { get => status; private set { status = value; Changed(); } }
-    public string ClockText => DateTime.Now.ToString("HH:mm", CultureInfo.CurrentCulture);
+    public string ClockText => ClockDisplay.Format(DateTime.Now,Preferences.Use12HourClock);
     public string DateText => DateTime.Now.ToString("dddd, d MMMM", CultureInfo.CurrentCulture);
     public string DayNumber=>DateTime.Now.Day.ToString(CultureInfo.CurrentCulture);
     public string DayAndMonth=>DateTime.Now.ToString("ddd\nMMM",CultureInfo.CurrentCulture).ToUpperInvariant();
@@ -283,7 +283,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     }
     public void UpdatePreferences(Preferences preferences)
     {
-        Preferences = preferences.Validated();Changed(nameof(DisplayedMediaArtwork));Changed(nameof(FocusLengthLabel));Changed(nameof(BreakLengthLabel)); Changed(nameof(Preferences)); Changed(nameof(CardWidth));Changed(nameof(TaskbarTile));Changed(nameof(WallpaperButtonLabel));Changed(nameof(NightModeLabel)); AppearanceChanged?.Invoke();
+        Preferences = preferences.Validated();Changed(nameof(ClockText));Changed(nameof(DisplayedMediaArtwork));Changed(nameof(FocusLengthLabel));Changed(nameof(BreakLengthLabel)); Changed(nameof(Preferences)); Changed(nameof(CardWidth));Changed(nameof(TaskbarTile));Changed(nameof(WallpaperButtonLabel));Changed(nameof(NightModeLabel)); AppearanceChanged?.Invoke();
         try { Store.Save("preferences.json", Preferences); Status = "Appearance saved."; } catch { Error("SETTINGS_SAVE_FAILED", "Preferences could not be saved. Check folder access."); }
     }
     private void QueueSave() { if (closing) return; saveTimer.Stop(); saveTimer.Start(); }

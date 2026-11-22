@@ -12,6 +12,7 @@ public sealed record Preferences
     public double EyeScale {get;init;}=1;
     public double EyeSpeed {get;init;}=1;
     public double CompactWidth {get;init;}=224;
+    public bool Use12HourClock {get;init;}
     public bool ShowClock {get;init;}=true;
     public bool ShowArtwork {get;init;}=true;
     public bool HeadphoneCards {get;init;}=true;
