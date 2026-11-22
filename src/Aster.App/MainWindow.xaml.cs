@@ -23,6 +23,7 @@ public partial class MainWindow : Window
         Closing += OnClosing;
         model.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(AppModel.Preferences)){SpotifyWallpaperCheck.IsChecked=model.Preferences.SpotifyWallpaper;NightModeCheck.IsChecked=model.Preferences.NightMode;}};
     }
+    public void ShowSection(string section){if(Content is DockPanel panel){var tabs=panel.Children.OfType<TabControl>().FirstOrDefault();if(tabs is not null){var item=tabs.Items.OfType<TabItem>().FirstOrDefault(t=>string.Equals(t.Header as string,section,StringComparison.OrdinalIgnoreCase));if(item is not null)tabs.SelectedItem=item;}}}
     private void OnClosing(object? sender, CancelEventArgs e) { if (Exiting) return; e.Cancel = true; Hide(); }
     private void HideWindow(object sender, RoutedEventArgs e) => Hide();
     private void ApplyVolume(object sender, RoutedEventArgs e) => model.SetVolume(VolumeSlider.Value);
@@ -34,7 +35,7 @@ public partial class MainWindow : Window
     private void ShelfMouseDown(object sender, MouseButtonEventArgs e) => dragStart = e.GetPosition(this);
     private void ShelfMouseMove(object sender, MouseEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed || sender is not ListBox list || list.SelectedItem is not ShelfRow row) return;
+        if (e.LeftButton != MouseButtonState.Pressed || sender is not ListBox list || list.SelectedItem is not ShelfRow row || InteractionOrigin.IsButton(e.OriginalSource)) return;
         var now = e.GetPosition(this);
         if (Math.Abs(now.X - dragStart.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(now.Y - dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         if (!System.IO.File.Exists(row.Path)) return;
@@ -73,5 +74,5 @@ public partial class MainWindow : Window
             ,SpotifyWallpaper=SpotifyWallpaperCheck.IsChecked==true,TaskbarGlass=TaskbarGlassCheck.IsChecked==true,TaskbarTintOpacity=(int)TaskbarTintSlider.Value,GlassShine=ShineSlider.Value
         });
     }
-    private void ResetAppearance(object sender, RoutedEventArgs e) { model.UpdatePreferences(new Preferences()); LoadAppearance(); }
+    private void ResetAppearance(object sender, RoutedEventArgs e) { model.UpdatePreferences(AppearanceDefaults.Apply(model.Preferences)); LoadAppearance(); }
 }

@@ -3,6 +3,10 @@
 A native ARM64 desktop island for Windows: a compact floating pill that expands into local music controls, a focus timer, a file shelf, notes and sound controls. Settings and additional local tools open separately. Original source and vector artwork; no proprietary app binaries or assets are used.
 
 
+## Make it yours
+
+The gear now opens a simple, searchable settings panel with a live resting-island preview. Look & feel, Eyes, Activities, Alerts and Privacy & startup contain plain-language controls, scoped resets and safe undo. Advanced local tools remain separate. See [personalization](docs/PERSONALIZATION.md) and [current polish validation](docs/POLISH-VALIDATION.md). Current suite: **113 automated checks**; native ARM64 build. The interface is original but is not claimed to be impossible to imitate.
+
 ## Living monochrome island · 120 Hz
 
 [Current design and measured performance](docs/LIVE-120HZ.md): two friendly animated eyes, monochrome materials, native headphone connection cards and persistent night mode. Night mode is available in Sound controls, the tray and Appearance. The display must be configured for 120 Hz to target 8.33 ms; exact per-frame timing is not guaranteed.
@@ -24,19 +28,19 @@ The earlier build notes below remain useful; the linked current update supersede
 Extract **Aster-Glass-win-arm64.zip** into a folder you own and open **Aster.App.exe**. Keep all files in the extracted folder together. The self-contained build includes the ARM64 .NET runtime; no separate runtime, administrator access, account, installation, payment or startup registration is required. The first thing shown is the island, not a dashboard.
 
 - Click the pill to expand. Click Music, Focus, Files, Note or Sound to change activity.
-- Hover gives a subtle size/light response. Hold the pill for about half a second to open Sound.
+- Hover opens the pill by default; this can be disabled in settings. Hold the pill for about half a second to open Sound.
 - Escape or the upward chevron collapses. Clicking another window collapses an activated expanded island.
-- Ctrl+Alt+Space opens the island; Ctrl+1 through Ctrl+5 switch activity while it has focus.
-- Double-click the background to play/pause; on the Focus page it starts/pauses focus.
+- Ctrl+Alt+Space opens the island; Ctrl+1 through Ctrl+7 switch activity while it has focus.
+- Double-click the Music background to play/pause; on Focus/Today it starts or pauses focus. Other activity backgrounds do not control music.
 - Drag local files onto the island to add references. Drag a shelf row out to another application.
 - Touch handlers support tap, long press, vertical expand/collapse and horizontal activity swipes. Physical touch and precision-trackpad gesture validation remains pending.
 - Use the settings icon or tray menu for settings and additional tools. Closing settings hides it. Use the tray's Quit Aster to exit.
 
-The island stays above ordinary windows; it is not an exclusive-fullscreen game overlay. A saved Hide setting suppresses it; the tray or shortcut can restore it.
+The island stays above ordinary windows; it is not an exclusive-fullscreen game overlay. Hide suppresses it for the current session; the tray or shortcut restores it, and a new launch shows it again.
 
 ## Customize
 
-Settings â†’ Appearance contains island scale, expanded width, glass opacity, monitor, top offset, font, reduced motion and spring stiffness/damping/mass. Defaults are stiffness 420, damping 38, mass 1. The island remains a deep dark material; light-theme and background/card/text overrides apply to the secondary tools window. The material is translucent vector glass with specular edge lighting. It does not capture, blur or refract desktop content.
+The new personalization panel previews and saves island choices. Extra numeric controls are under Privacy & startup → Advanced appearance. Defaults use stiffness 420, damping 38, mass 1. The material is translucent vector glass with specular edge lighting; desktop blur/refraction is not implemented. Monochrome colors and original artwork behavior are documented in the design notes.
 
 ## Offline and privacy
 
@@ -84,7 +88,7 @@ src/
   Aster.Platform.Windows/     native audio, battery, brightness, Windows media sessions
   Aster.App/                  island window, vector glass, retained activity views, settings
 tests/
-  Aster.Tests/                109 executable automated tests
+  Aster.Tests/                113 executable automated tests
   visual-baselines/           reviewed own-window renders
 scripts/                     build, PE/source audit, visual regression and preview tools
 docs/                        inventory, architecture, privacy, validation and troubleshooting

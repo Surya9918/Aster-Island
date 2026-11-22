@@ -68,16 +68,17 @@ public partial class OverlayWindow : Window
     {
         if(e.PropertyName==nameof(AppModel.NotificationUnread)&&Machine.Target==IslandState.Expanded&&Machine.Page==IslandPage.Notifications)model.MarkNotificationsRead();
         if(e.PropertyName==nameof(AppModel.FocusRunning))Machine.SetActivity(model.FocusRunning?new(ActivityKind.Focus,20,"Focus"):null,ActivityKind.Focus);
-        if(e.PropertyName==nameof(AppModel.MediaPlaying))Machine.SetActivity(model.MediaPlaying?new(ActivityKind.Media,10,"Music"):null,ActivityKind.Media);
+        if(e.PropertyName==nameof(AppModel.MediaPlaying))Machine.SetActivity(model.MediaPlaying&&model.Preferences.ShowMedia?new(ActivityKind.Media,10,"Music"):null,ActivityKind.Media);
         if(e.PropertyName is nameof(AppModel.FocusProgress)){progress.Target=model.FocusProgress;Wake();}
         if(e.PropertyName is nameof(AppModel.TimerText) or nameof(AppModel.ClockText) or nameof(AppModel.MediaTitle) or nameof(AppModel.MediaArtwork))Wake();
     }
-    private void Notice(string title,string detail){if(Machine.Target==IslandState.Expanded)return;Machine.Notify(title,detail);}
+    private void Notice(string title,string detail){if(!model.Preferences.NotificationBanners)return;if(Machine.Target is IslandState.Expanded or IslandState.SystemHud)return;Machine.Notify(title,detail,TimeSpan.FromSeconds(model.Preferences.NotificationSeconds));}
     private void SystemHud(SystemHudKind kind,double value,bool muted)
     {
+        if(kind==SystemHudKind.Volume&&!model.Preferences.VolumeHudEnabled||kind==SystemHudKind.Brightness&&!model.Preferences.BrightnessHudEnabled)return;
         edgeReveal=false;
         if(Machine.Target==IslandState.Expanded&&Machine.Page==IslandPage.Controls){Footer.Text=$"{kind} · {Math.Round(value):0}% · on-device control";return;}
-        Machine.ShowSystemHud(kind,value,muted);
+        Machine.ShowSystemHud(kind,value,muted,TimeSpan.FromSeconds(model.Preferences.HudSeconds));
     }
     private void Retarget()
     {
@@ -90,11 +91,11 @@ public partial class OverlayWindow : Window
             IslandState.Expanded=>(model.Preferences.OverlayWidth,Machine.Page==IslandPage.Notifications?390d:334d,36d),
             IslandState.Notification=>(430d,92d,30d),
             IslandState.PersistentActivity=>(300d,46d,23d),
-            IslandState.Hover=>(Machine.ActivityCount>0?310d:240d,44d,22d),
+            IslandState.Hover=>(Machine.ActivityCount>0?310d:model.Preferences.CompactWidth+16,44d,22d),
             IslandState.Hidden=>(220d,42d,21d),
             IslandState.Stowed=>(96d,12d,6d),
             IslandState.SystemHud=>(350d,74d,30d),
-            _=>(224d,40d,20d)
+            _=>(model.Preferences.CompactWidth,40d,20d)
         };
         motion=IslandMotionProfile.Create(configuration,height.Target>height.Position+.5);
         content.Target=state==IslandState.Expanded?1:0;
@@ -135,13 +136,13 @@ public partial class OverlayWindow : Window
         var noticeAlpha=Math.Clamp(notice.Position,0,1)*Smooth((150-height.Position)/45)*Smooth((height.Position-45)/30);
         Glass.Frame(paintWidth,paintHeight,paintRadius,alpha,reveal,clock.Elapsed.TotalSeconds,hover.Position,progress.Position,noticeAlpha,light,top.Position,hud.Position,hudValue.Position,Math.Clamp(nightBlend.Position,0,1));
         var compactGlyph=Smooth((105-paintHeight)/45)*Smooth((paintHeight-16)/22)*(1-noticeAlpha)*(1-Math.Clamp(hud.Position,0,1));
-        CompactEye.Opacity=alpha*Math.Clamp(noticeAlpha+((model.MediaArtwork is not null&&model.MediaAvailable)?0:compactGlyph),0,1)*(1-.2*Math.Clamp(nightBlend.Position,0,1));
-        Canvas.SetLeft(CompactEye,Glass.Bounds.X+11);Canvas.SetTop(CompactEye,Glass.Bounds.Y+(noticeAlpha>.5?19:paintHeight/2-11));
+        CompactEye.Opacity=alpha*Math.Clamp(noticeAlpha+((model.DisplayedMediaArtwork is not null&&model.MediaAvailable)?0:compactGlyph),0,1)*(1-.2*Math.Clamp(nightBlend.Position,0,1));
+        Canvas.SetLeft(CompactEye,Glass.Bounds.X+(Machine.ActivityCount==0&&!model.Preferences.ShowClock&&noticeAlpha<.5?paintWidth/2-15:11));Canvas.SetTop(CompactEye,Glass.Bounds.Y+(noticeAlpha>.5?19:paintHeight/2-11));
         HitPad.Width=paintWidth;HitPad.Height=Math.Max(14,paintHeight);HitPad.CornerRadius=new(paintRadius);Canvas.SetLeft(HitPad,(760-paintWidth)/2);Canvas.SetTop(HitPad,top.Position);
         HitPad.IsHitTestVisible=Machine.Target!=IslandState.Hidden;
         HitPad.Opacity=alpha;
         var contentInteractive=Machine.Target==IslandState.Expanded&&reveal>.8;
-        ExpandedContent.Opacity=reveal*alpha*(1-.14*Math.Clamp(nightBlend.Position,0,1));ExpandedContent.IsHitTestVisible=contentInteractive;
+        ExpandedContent.Opacity=reveal*alpha*(1-model.Preferences.NightDim*Math.Clamp(nightBlend.Position,0,1));ExpandedContent.IsHitTestVisible=contentInteractive;
         ExpandedContent.IsEnabled=contentInteractive;
         // Hidden only after opacity reaches zero: retain layout/views without invisible tab stops.
         ExpandedContent.Visibility=reveal*alpha>.0001?Visibility.Visible:Visibility.Hidden;
@@ -161,6 +162,9 @@ public partial class OverlayWindow : Window
     private static double Smooth(double value){value=Math.Clamp(value,0,1);return value*value*(3-2*value);}
     public void Place(Preferences p)
     {
+        MediaTab.Visibility=p.ShowMedia?Visibility.Visible:Visibility.Collapsed;
+        if(!p.ShowMedia){Machine.SetActivity(null,ActivityKind.Media);if(Machine.Page==IslandPage.Media)Machine.Select(IslandPage.Today);}
+        else if(model.MediaPlaying)Machine.SetActivity(new(ActivityKind.Media,10,"Music"),ActivityKind.Media);
         configuration=NightMotion.Adapt(new(p.SpringStiffness,p.SpringDamping,p.SpringMass),p.NightMode);
         FontFamily=new FontFamily(p.Font);
         var hwnd=new WindowInteropHelper(this).Handle;if(hwnd==IntPtr.Zero)return;
@@ -186,7 +190,7 @@ public partial class OverlayWindow : Window
     private void CollapseClick(object sender,RoutedEventArgs e)=>Machine.Collapse();
     private void SelectPage(object sender,RoutedEventArgs e){if(sender is Button button&&Enum.TryParse<IslandPage>(button.Tag as string,out var page))Machine.Select(page);}
     private void EnterEdge(object sender,MouseEventArgs e){leave.Stop();if(touching||Machine.Target is IslandState.Hidden or IslandState.SystemHud or IslandState.Notification)return;if(Machine.Target!=IslandState.Expanded){edgeReveal=true;Machine.Expand();}}
-    private void EnterIsland(object sender,MouseEventArgs e)=>EnterEdge(sender,e);
+    private void EnterIsland(object sender,MouseEventArgs e){if(model.Preferences.HoverToOpen)EnterEdge(sender,e);else {leave.Stop();Machine.Hover(true);}}
     private void LeaveIsland(object sender,MouseEventArgs e){leave.Stop();leave.Start();}
     private static bool Interactive(object? source)
     {
@@ -200,7 +204,7 @@ public partial class OverlayWindow : Window
         pressPoint=Position(e);pressed=true;held=moved=false;
         CaptureMouse();
         if(e.ClickCount==2&&Machine.Target==IslandState.Notification){held=true;Machine.Expand(IslandPage.Notifications);Activate();return;}
-        if(e.ClickCount==2){held=true;if(Machine.Page is IslandPage.Focus or IslandPage.Today)model.ToggleFocusCommand.Execute(null);else model.MediaCommand.Execute("toggle");return;}
+        if(e.ClickCount==2){held=true;if(Machine.Page is IslandPage.Focus or IslandPage.Today)model.ToggleFocusCommand.Execute(null);else if(Machine.Page==IslandPage.Media&&model.Preferences.ShowMedia)model.MediaCommand.Execute("toggle");return;}
         longPress.Start();
     }
     private void PointerMove(object sender,MouseEventArgs e)
@@ -229,20 +233,20 @@ public partial class OverlayWindow : Window
     private void FingerUp(object sender,TouchEventArgs e)
     {
         if(!touching)return;longPress.Stop();var delta=e.GetTouchPoint(Stage).Position-pressPoint;
-        if(Machine.Target==IslandState.Expanded&&Math.Abs(delta.X)>55)Machine.Select((IslandPage)(((int)Machine.Page+(delta.X<0?1:6))%7));
+        if(Machine.Target==IslandState.Expanded&&Math.Abs(delta.X)>55){var next=((int)Machine.Page+(delta.X<0?1:6))%7;if(next==(int)IslandPage.Media&&!model.Preferences.ShowMedia)next=(next+(delta.X<0?1:6))%7;Machine.Select((IslandPage)next);}
         else if(!held&&!moved){Machine.Expand(Machine.Target==IslandState.Notification?IslandPage.Notifications:null);Activate();}pressed=touching=false;ReleaseTouchCapture(e.TouchDevice);e.Handled=true;
     }
     private void KeyPressed(object sender,KeyEventArgs e)
     {
         if(e.Key==Key.Escape){Machine.Collapse();e.Handled=true;}
-        if(Keyboard.Modifiers==ModifierKeys.Control&&e.Key is >=Key.D1 and <=Key.D7){Machine.Select((IslandPage)(e.Key-Key.D1));e.Handled=true;}
+        if(Keyboard.Modifiers==ModifierKeys.Control&&e.Key is >=Key.D1 and <=Key.D7){var next=(IslandPage)(e.Key-Key.D1);if(next!=IslandPage.Media||model.Preferences.ShowMedia)Machine.Select(next);e.Handled=true;}
     }
     private void FilesOver(object sender,DragEventArgs e){if(e.Data.GetDataPresent(DataFormats.FileDrop)){Machine.Expand(IslandPage.Shelf);e.Effects=DragDropEffects.Link|DragDropEffects.Copy;e.Handled=true;}}
     private void FilesDropped(object sender,DragEventArgs e){if(e.Data.GetData(DataFormats.FileDrop) is string[] paths){model.AddFiles(paths);e.Handled=true;}}
     private void FileMouseDown(object sender,MouseButtonEventArgs e)=>filePoint=e.GetPosition(this);
     private void FileMouseMove(object sender,MouseEventArgs e)
     {
-        if(e.LeftButton!=MouseButtonState.Pressed||sender is not ListBox list||list.SelectedItem is not ShelfRow file||Interactive(e.OriginalSource)&&e.OriginalSource is Button)return;
+        if(e.LeftButton!=MouseButtonState.Pressed||sender is not ListBox list||list.SelectedItem is not ShelfRow file||InteractionOrigin.IsButton(e.OriginalSource))return;
         if((e.GetPosition(this)-filePoint).Length<8||!System.IO.File.Exists(file.Path))return;
         DragDrop.DoDragDrop(list,new DataObject(DataFormats.FileDrop,new[]{file.Path}),DragDropEffects.Copy|DragDropEffects.Link);
     }

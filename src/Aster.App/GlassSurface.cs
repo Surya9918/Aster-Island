@@ -64,7 +64,7 @@ public sealed class GlassSurface : FrameworkElement
             var compactPhase=Math.Clamp((r.Height-60)/45,0,1);compactPhase=1-compactPhase*compactPhase*(3-2*compactPhase);
             var stowFade=Math.Clamp((r.Height-16)/22,0,1);compactPhase*=stowFade*stowFade*(3-2*stowFade);
             dc.PushOpacity(Math.Clamp(compactPhase*(1-notice)*(1-hudAlpha),0,1));
-            if(model.MediaArtwork is { } art&&model.MediaAvailable)
+            if(model.DisplayedMediaArtwork is { } art&&model.MediaAvailable)
             {
                 var tile=new Rect(r.X+14,r.Y+r.Height/2-13,26,26);
                 dc.PushClip(new RectangleGeometry(tile,7,7));
@@ -75,7 +75,7 @@ public sealed class GlassSurface : FrameworkElement
             if(label.Length>0)Text(dc,label,13.5,white,new(r.X+47,r.Y+r.Height/2-10),r.Width-125);
             if(active?.Kind==ActivityKind.Focus){Text(dc,model.TimerText,12.5,mint,new(r.Right-75,r.Y+r.Height/2-9),56);dc.DrawEllipse(mint,null,new(r.Right-20,r.Y+r.Height/2),2.5,2.5);}
             else if(active?.Kind==ActivityKind.Media&&model.MediaPlaying){for(var i=0;i<5;i++){var h=4+10*(.5+.5*Math.Sin(clock*4+i*1.6));dc.DrawRoundedRectangle(mint,null,new Rect(r.Right-45+i*4,r.Y+r.Height/2-h/2,2,h),1,1);}}
-            else Text(dc,model.ClockText,12,muted,new(r.Right-62,r.Y+r.Height/2-9),50);
+            else if(model.Preferences.ShowClock)Text(dc,model.ClockText,12,muted,new(model.Preferences.EyesVisible?r.Right-62:r.X+r.Width/2-25,r.Y+r.Height/2-9),50);
             dc.Pop();
         }
         if(model.FocusRunning&&r.Height<100&&state.Target is not(IslandState.Notification or IslandState.SystemHud))

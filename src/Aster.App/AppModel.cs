@@ -34,7 +34,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     private readonly WeatherClient weather;
     private readonly MediaService media = new();
     private bool closing;
-    private int ticks;
+    private int ticks;private string lastClock="",lastDate="";
     private string status = "Ready. Local features work offline.";
     public string Status { get => status; private set { status = value; Changed(); } }
     public string ClockText => DateTime.Now.ToString("HH:mm", CultureInfo.CurrentCulture);
@@ -50,6 +50,9 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     public string Battery { get => battery; private set { battery = value; Changed(); } }
     private MediaReading mediaReading = new("No media playing", "Open a player to get started", false, false);
     public System.Windows.Media.ImageSource? MediaArtwork {get;private set;}
+    public System.Windows.Media.ImageSource? DisplayedMediaArtwork=>Preferences.ShowArtwork?MediaArtwork:null;
+    public string FocusLengthLabel=>$"{Preferences.FocusMinutes} min";
+    public string BreakLengthLabel=>$"{Preferences.BreakMinutes} min";
     private long mediaRevision;
     internal async void UpdateMedia(MediaReading reading)
     {
@@ -61,7 +64,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
         {
             if(closing||revision!=System.Threading.Interlocked.Read(ref mediaRevision))return;
             mediaReading=reading with{Artwork=null};MediaArtwork=art;
-            Changed(nameof(MediaSourceAppId));Changed(nameof(MediaArtwork));Changed(nameof(MediaTitle));Changed(nameof(MediaArtist));
+            Changed(nameof(MediaSourceAppId));Changed(nameof(MediaArtwork));Changed(nameof(DisplayedMediaArtwork));Changed(nameof(MediaTitle));Changed(nameof(MediaArtist));
             Changed(nameof(PlayLabel));Changed(nameof(MediaAvailable));Changed(nameof(MediaPlaying));
         });
     }
@@ -154,7 +157,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     {
         Store = store; Log = new(store.Root); dispatcher = Dispatcher.CurrentDispatcher;
         Preferences = store.Load("preferences.json", new Preferences()).Validated();
-        data = store.Load("workspace.json", new WorkspaceData()).Validated();
+        data = store.Load("workspace.json", new WorkspaceData()).Validated();focus.Reset(Preferences.FocusMinutes);focusDuration=Preferences.FocusMinutes*60;
         weather = new(Consent, Audit);
         media.Changed += UpdateMedia;
         media.Failed += () => dispatcher.BeginInvoke(() => Error("MEDIA_UNAVAILABLE", "Media information is unavailable. Try another player."));
@@ -165,8 +168,8 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
         InitializeNotifications();InitializeLive();
         ToggleWallpaperCommand=new ActionCommand(_=>UpdatePreferences(Preferences with{SpotifyWallpaper=!Preferences.SpotifyWallpaper}));
         MediaCommand = new AsyncCommand(async p => { if (!await media.ControlAsync(p as string ?? "toggle")) Status = "This player does not support that control."; }, () => Error("MEDIA_CONTROL_FAILED", "The media control was unavailable."));
-        ToggleFocusCommand = new ActionCommand(_ => { if (focus.Running) focus.Pause(); else focus.Start(); FocusStatus = focus.Running ? "Focus session in progress" : "Focus paused"; TimerChanged(); });
-        ResetFocusCommand = new ActionCommand(p => { var minutes = int.TryParse(p as string, out var n) ? Math.Clamp(n,1,180) : 25; focus.Reset(minutes); focusDuration = minutes * 60; FocusStatus = "Make room for one thing."; TimerChanged(); });
+        ToggleFocusCommand = new ActionCommand(_ => { if (focus.Running) focus.Pause(); else {if(focus.Remaining<=TimeSpan.Zero){focus.Reset(Preferences.FocusMinutes);focusDuration=Preferences.FocusMinutes*60;}focus.Start();} FocusStatus = focus.Running ? "Focus session in progress" : "Focus paused"; TimerChanged(); });
+        ResetFocusCommand = new ActionCommand(p => { var minutes = p as string=="break"?Preferences.BreakMinutes:p as string=="focus"?Preferences.FocusMinutes:int.TryParse(p as string, out var n) ? Math.Clamp(n,1,180) : Preferences.FocusMinutes; focus.Reset(minutes); focusDuration = minutes * 60; FocusStatus = "Make room for one thing."; TimerChanged(); });
         AddTaskCommand = new ActionCommand(_ => { if (string.IsNullOrWhiteSpace(TaskDraft) || data.Tasks.Count >= 100) return; data.Tasks.Add(new(Guid.NewGuid(), TaskDraft.Trim()[..Math.Min(TaskDraft.Trim().Length, 500)], false)); TaskDraft = ""; Changed(nameof(TaskDraft)); Changed(nameof(Tasks)); QueueSave(); });
         ToggleTaskCommand = new ActionCommand(p => { if (p is Guid id) { data = data with { Tasks = data.Tasks.Select(t => t.Id == id ? t with { Done = !t.Done } : t).ToList() }; Changed(nameof(Tasks)); QueueSave(); } });
         RemoveTaskCommand = new ActionCommand(p => { if (p is Guid id) { data.Tasks.RemoveAll(t => t.Id == id); Changed(nameof(Tasks)); QueueSave(); } });
@@ -206,7 +209,8 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
         var wasRunning = focus.Running;
         if (focus.CompleteIfDue()) { FocusStatus = "Focus complete. Take a breath."; Status = "Your focus session is complete."; PublishNotice("A little pause.", "Your focus session is complete. Take a breath."); }
         if (wasRunning) TimerChanged();
-        if (ticks % 15 == 0) { Changed(nameof(ClockText)); Changed(nameof(DateText)); }
+        var clockNow=ClockText;if(lastClock!=clockNow){lastClock=clockNow;Changed(nameof(ClockText));}
+        var dateNow=DateText;if(lastDate!=dateNow){lastDate=dateNow;Changed(nameof(DateText));Changed(nameof(DayNumber));Changed(nameof(DayAndMonth));Changed(nameof(WeekNumber));Changed(nameof(Weekday));Changed(nameof(FullDate));Changed(nameof(WeekCells));}
         if (++ticks % 15 == 0) { RefreshPower(); if (ClipboardEnabled) Changed(nameof(Clips)); }
     }
     private void TimerChanged() { Changed(nameof(TimerText)); Changed(nameof(TimerButton)); Changed(nameof(FocusStatus)); Changed(nameof(FocusRunning)); Changed(nameof(FocusProgress));Changed(nameof(FocusTile)); }
@@ -279,7 +283,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     }
     public void UpdatePreferences(Preferences preferences)
     {
-        Preferences = preferences.Validated(); Changed(nameof(Preferences)); Changed(nameof(CardWidth));Changed(nameof(TaskbarTile));Changed(nameof(WallpaperButtonLabel));Changed(nameof(NightModeLabel)); AppearanceChanged?.Invoke();
+        Preferences = preferences.Validated();Changed(nameof(DisplayedMediaArtwork));Changed(nameof(FocusLengthLabel));Changed(nameof(BreakLengthLabel)); Changed(nameof(Preferences)); Changed(nameof(CardWidth));Changed(nameof(TaskbarTile));Changed(nameof(WallpaperButtonLabel));Changed(nameof(NightModeLabel)); AppearanceChanged?.Invoke();
         try { Store.Save("preferences.json", Preferences); Status = "Appearance saved."; } catch { Error("SETTINGS_SAVE_FAILED", "Preferences could not be saved. Check folder access."); }
     }
     private void QueueSave() { if (closing) return; saveTimer.Stop(); saveTimer.Start(); }

@@ -76,9 +76,10 @@ public sealed class DesktopIntegration:IDisposable
     public void ApplyPreferences()
     {
         var p=model.Preferences;
-        if(keys is not null){keys.VolumeEnabled=p.ReplaceVolumeKeys;keys.BrightnessEnabled=p.ReplaceBrightnessKeys;keys.DimKey=p.BrightnessDownKey;keys.BrightenKey=p.BrightnessUpKey;}
+        if(keys is not null){keys.VolumeEnabled=p.ReplaceVolumeKeys&&p.VolumeHudEnabled;keys.BrightnessEnabled=p.ReplaceBrightnessKeys&&p.BrightnessHudEnabled;keys.DimKey=p.BrightnessDownKey;keys.BrightenKey=p.BrightnessUpKey;}
         if(p.TaskbarGlass){taskbar.Apply(p.TaskbarTintOpacity);model.SetTaskbarStatus(taskbar.Status,taskbar.CanTint);}
         else{taskbar.Restore();model.SetTaskbarStatus(taskbar.Status);}
+        if(!p.AutoStowMaximized)island.Machine.SetStowed(false);
         ReadForeground();
     }
     private void ReadForeground()

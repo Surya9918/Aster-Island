@@ -13,7 +13,7 @@ using Forms=System.Windows.Forms;
 namespace Aster.App;
 public partial class App : Application
 {
-    private AppModel? model;private MainWindow? center;private OverlayWindow? overlay;
+    private AppModel? model;private MainWindow? center;private PersonalizationWindow? personalization;private OverlayWindow? overlay;
     private Forms.NotifyIcon? tray;private HwndSource? source;private Mutex? mutex;
     private IntPtr handle;private bool listening,hotkey,ownsMutex,quitting;
     private DesktopIntegration? desktop;
@@ -30,7 +30,7 @@ public partial class App : Application
         {var helper=new Window{Title="Aster maximized-window test",ShowInTaskbar=true,Background=Brushes.Black};helper.Loaded+=(_,_)=>{helper.WindowState=WindowState.Maximized;helper.Activate();};helper.Show();helper.Activate();await System.Threading.Tasks.Task.Delay(2200);helper.Close();Shutdown();return;}
         if(e.Args.Length==2&&e.Args[0]=="--audio-probe")
         {try{var endpoints=await System.Threading.Tasks.Task.Run(Aster.Platform.Windows.AudioDeviceService.Read);using var watch=Aster.Platform.Windows.AudioDeviceService.Watch(()=>{});var volume=Aster.Platform.Windows.AudioService.Read();using var volumeWatch=Aster.Platform.Windows.AudioService.Watch(_=>{});await File.WriteAllTextAsync(e.Args[1],System.Text.Json.JsonSerializer.Serialize(new{nativeEnumeration=true,nativeSubscription=true,volumeServiceAfterDeviceDiscovery=true,volumeWatchAfterDeviceDiscovery=true,endpoints=endpoints.Count,headphoneEndpoints=endpoints.Count(x=>x.Headphone),activeOutputs=endpoints.Count(x=>x.Active)}));Shutdown(0);}catch(Exception error){await File.WriteAllTextAsync(e.Args[1]+".failure",error.ToString());Shutdown(1);}return;}
-        var startupTest=e.Args.Length==2&&(e.Args[0]=="--startup-test"||e.Args[0]=="--shelf-test"||e.Args[0]=="--notification-test"||e.Args[0]=="--notification-live-test"||e.Args[0]=="--quality-test"||e.Args[0]=="--night-test");
+        var startupTest=e.Args.Length==2&&(e.Args[0]=="--startup-test"||e.Args[0]=="--shelf-test"||e.Args[0]=="--notification-test"||e.Args[0]=="--notification-live-test"||e.Args[0]=="--quality-test"||e.Args[0]=="--night-test"||e.Args[0]=="--settings-test");
         var visual=e.Args.Length==2&&e.Args[0]=="--visual-test";
         var deviceTest=e.Args.Length==2&&e.Args[0]=="--device-test";
         var uiTest=Array.IndexOf(e.Args,"--ui-test")>=0;
@@ -49,10 +49,10 @@ public partial class App : Application
         overlay.SourceInitialized+=(_,_)=>
         {
             handle=new WindowInteropHelper(overlay).Handle;source=HwndSource.FromHwnd(handle);source?.AddHook(WindowMessage);
-            if(!visual){hotkey=RegisterHotKey(handle,1,0x0001|0x0002|0x4000,0x20);if(!hotkey)model.Error("HOTKEY_UNAVAILABLE","Ctrl+Alt+Space is in use. Open Aster from the tray.");}
+            if(!visual&&!startupTest){hotkey=RegisterHotKey(handle,1,0x0001|0x0002|0x4000,0x20);if(!hotkey)model.Error("HOTKEY_UNAVAILABLE","Ctrl+Alt+Space is in use. Open Aster from the tray.");}
         };
         ApplyAppearance();
-        tray=new Forms.NotifyIcon{Text="Aster · Your island",Icon=System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!)??System.Drawing.SystemIcons.Application,Visible=!visual};
+        tray=new Forms.NotifyIcon{Text="Aster · Your island",Icon=System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!)??System.Drawing.SystemIcons.Application,Visible=!(visual||startupTest)};
         var menu=new Forms.ContextMenuStrip();
         menu.Items.Add("Open island",null,(_,_)=>Dispatcher.Invoke(OpenIsland));
         var nightItem=new Forms.ToolStripMenuItem("Night mode"){Checked=model.Preferences.NightMode};nightItem.Click+=(_,_)=>Dispatcher.Invoke(()=>{model.ToggleNightCommand.Execute(null);nightItem.Checked=model.Preferences.NightMode;});menu.Items.Add(nightItem);menu.Opening+=(_,_)=>nightItem.Checked=model.Preferences.NightMode;
@@ -65,7 +65,7 @@ public partial class App : Application
         if(Array.IndexOf(e.Args,"--connect-notifications")>=0){overlay.Machine.Expand(Aster.Core.IslandPage.Notifications);overlay.Activate();model.ConnectNotificationsCommand.Execute(null);}
         if(startupTest)
         {
-            try{if(e.Args[0]=="--night-test")await LiveQualityProbe.NightAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--quality-test")await LiveQualityProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--notification-live-test")await NotificationLiveProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--notification-test")await NotificationProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--shelf-test")await ShelfProbe.RunAsync(overlay,model,e.Args[1]);else await StartupProbe.RunAsync(overlay,model,OpenIsland,e.Args[1]);Quit();}
+            try{if(e.Args[0]=="--settings-test")await SettingsProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--night-test")await LiveQualityProbe.NightAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--quality-test")await LiveQualityProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--notification-live-test")await NotificationLiveProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--notification-test")await NotificationProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--shelf-test")await ShelfProbe.RunAsync(overlay,model,e.Args[1]);else await StartupProbe.RunAsync(overlay,model,OpenIsland,e.Args[1]);Quit();}
             catch(Exception error){Directory.CreateDirectory(e.Args[1]);await File.WriteAllTextAsync(Path.Combine(e.Args[1],"failure.txt"),error.ToString());Quit();Environment.ExitCode=1;}
             return;
         }
@@ -85,11 +85,12 @@ public partial class App : Application
         if(model is null||overlay is null||quitting)return;
         model.EnsureIslandShown();overlay.OpenIsland();
     }
-    private void OpenSettings()
+    private void OpenSettings(){if(model is null||quitting)return;personalization??=new PersonalizationWindow(model,OpenTools);personalization.Show();personalization.Activate();}
+    private void OpenTools(string section)
     {
         if(model is null||quitting)return;
         if(center is null){center=new(model){Title="Aster · Settings & local tools"};center.Opacity=model.Preferences.Opacity;}
-        center.Show();if(center.WindowState==WindowState.Minimized)center.WindowState=WindowState.Normal;center.Activate();
+        center.ShowSection(section);center.Show();if(center.WindowState==WindowState.Minimized)center.WindowState=WindowState.Normal;center.Activate();
     }
     private void PowerChanged(object sender,PowerModeChangedEventArgs e){if(e.Mode==PowerModes.Resume)Dispatcher.BeginInvoke(()=>desktop?.RecoverDeviceIntegrations());}
     private void SessionChanged(object sender,SessionSwitchEventArgs e)=>Dispatcher.BeginInvoke(()=>{if(e.Reason==SessionSwitchReason.SessionLock){model?.LockNotifications(true);overlay?.ClearNotificationPrivacy();overlay?.Machine.SetHidden(true);}else if(e.Reason==SessionSwitchReason.SessionUnlock){model?.LockNotifications(false);if(model?.Preferences.ShowOverlay==true)overlay?.SetVisible(true);}});
@@ -119,9 +120,9 @@ public partial class App : Application
     }
     private void Quit()
     {
-        if(quitting)return;quitting=true;ListenClipboard(false);if(hotkey)UnregisterHotKey(handle,1);
+        if(quitting)return;personalization?.FlushPending();quitting=true;ListenClipboard(false);if(hotkey)UnregisterHotKey(handle,1);
         source?.RemoveHook(WindowMessage);SystemEvents.DisplaySettingsChanged-=DisplayChanged;SystemEvents.SessionSwitch-=SessionChanged;SystemEvents.PowerModeChanged-=PowerChanged;desktop?.Dispose();tray?.Dispose();tray=null;model?.Dispose();
-        if(center is not null)center.Exiting=true;if(overlay is not null)overlay.Exiting=true;overlay?.Close();center?.Close();Shutdown();
+        if(personalization is not null){personalization.Exiting=true;personalization.Close();}if(center is not null)center.Exiting=true;if(overlay is not null)overlay.Exiting=true;overlay?.Close();center?.Close();Shutdown();
     }
     protected override void OnExit(ExitEventArgs e){if(!quitting){desktop?.Dispose();tray?.Dispose();model?.Dispose();}if(ownsMutex)mutex?.ReleaseMutex();mutex?.Dispose();base.OnExit(e);}
     [DllImport("user32.dll")][return:MarshalAs(UnmanagedType.Bool)]private static extern bool RegisterHotKey(IntPtr hwnd,int id,uint modifiers,uint key);

@@ -4,6 +4,25 @@ namespace Aster.Core;
 
 public sealed record Preferences
 {
+    public bool HoverToOpen {get;init;}=true;
+    public bool EyesVisible {get;init;}=true;
+    public bool EyesFollowPointer {get;init;}=true;
+    public bool EyesBlink {get;init;}=true;
+    public bool EyesHappy {get;init;}=true;
+    public double EyeScale {get;init;}=1;
+    public double EyeSpeed {get;init;}=1;
+    public double CompactWidth {get;init;}=224;
+    public bool ShowClock {get;init;}=true;
+    public bool ShowArtwork {get;init;}=true;
+    public bool HeadphoneCards {get;init;}=true;
+    public bool VolumeHudEnabled {get;init;}=true;
+    public bool BrightnessHudEnabled {get;init;}=true;
+    public bool NotificationBanners {get;init;}=true;
+    public double NotificationSeconds {get;init;}=3;
+    public double HudSeconds {get;init;}=1.6;
+    public double NightDim {get;init;}=.14;
+    public int FocusMinutes {get;init;}=25;
+    public int BreakMinutes {get;init;}=5;
     public bool NightMode { get; init; }
     public bool NotificationsEnabled { get; init; }
     public bool NotificationPreviews { get; init; } = true;
@@ -41,6 +60,9 @@ public sealed record Preferences
 
     public Preferences Validated() => this with
     {
+        EyeScale=Clamp(EyeScale,.75,1.1,1),EyeSpeed=Clamp(EyeSpeed,.5,1.4,1),CompactWidth=Clamp(CompactWidth,180,300,224),
+        NotificationSeconds=Clamp(NotificationSeconds,2,8,3),HudSeconds=Clamp(HudSeconds,.8,3,1.6),NightDim=Clamp(NightDim,.05,.3,.14),
+        FocusMinutes=Math.Clamp(FocusMinutes,1,180),BreakMinutes=Math.Clamp(BreakMinutes,1,30),
         Theme = Theme is "Dark" or "Light" ? Theme : "Dark",
         Accent = Regex.IsMatch(Accent ?? "", "^#[0-9a-fA-F]{6}$") ? Accent! : "#76D8CB",
         BackgroundColor = ValidColor(BackgroundColor), CardColor = ValidColor(CardColor), TextColor = ValidColor(TextColor),

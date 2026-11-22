@@ -101,12 +101,12 @@ public sealed class IslandStateMachine(IClock clock)
     public void ClearNotice(){NoticeTitle=NoticeDetail="";noticeUntil=null;}
     public void Collapse() { noticeUntil = null; Retarget(Resting); }
     public void SetHidden(bool hidden) { noticeUntil = null; Retarget(hidden ? IslandState.Hidden : Resting); }
-    public void ShowSystemHud(SystemHudKind kind,double value,bool muted=false)
+    public void ShowSystemHud(SystemHudKind kind,double value,bool muted=false,TimeSpan? duration=null)
     {
         if(Target==IslandState.Hidden)return;
         if(Target is not(IslandState.Notification or IslandState.SystemHud))resume=Target;
         HudKind=kind;HudValue=double.IsFinite(value)?Math.Clamp(value,0,100):0;HudMuted=muted;
-        noticeUntil=clock.UtcNow+TimeSpan.FromSeconds(1.6);Retarget(IslandState.SystemHud);
+        noticeUntil=clock.UtcNow+TimeSpan.FromSeconds(Math.Clamp(duration?.TotalSeconds??1.6,.5,5));Retarget(IslandState.SystemHud);
     }
     public void Notify(string title, string detail, TimeSpan? duration = null)
     {
