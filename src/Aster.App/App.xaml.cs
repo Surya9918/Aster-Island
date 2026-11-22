@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
@@ -27,7 +28,9 @@ public partial class App : Application
         {try{await TaskbarProbe.RunAsync(e.Args[1]);Shutdown(0);}catch{Shutdown(1);}return;}
         if(e.Args.Length==1&&e.Args[0]=="--foreground-helper")
         {var helper=new Window{Title="Aster maximized-window test",ShowInTaskbar=true,Background=Brushes.Black};helper.Loaded+=(_,_)=>{helper.WindowState=WindowState.Maximized;helper.Activate();};helper.Show();helper.Activate();await System.Threading.Tasks.Task.Delay(2200);helper.Close();Shutdown();return;}
-        var startupTest=e.Args.Length==2&&(e.Args[0]=="--startup-test"||e.Args[0]=="--shelf-test"||e.Args[0]=="--notification-test"||e.Args[0]=="--notification-live-test");
+        if(e.Args.Length==2&&e.Args[0]=="--audio-probe")
+        {try{var endpoints=await System.Threading.Tasks.Task.Run(Aster.Platform.Windows.AudioDeviceService.Read);using var watch=Aster.Platform.Windows.AudioDeviceService.Watch(()=>{});await File.WriteAllTextAsync(e.Args[1],System.Text.Json.JsonSerializer.Serialize(new{nativeEnumeration=true,nativeSubscription=true,endpoints=endpoints.Count,headphoneEndpoints=endpoints.Count(x=>x.Headphone),activeOutputs=endpoints.Count(x=>x.Active)}));Shutdown(0);}catch(Exception error){await File.WriteAllTextAsync(e.Args[1]+".failure",error.ToString());Shutdown(1);}return;}
+        var startupTest=e.Args.Length==2&&(e.Args[0]=="--startup-test"||e.Args[0]=="--shelf-test"||e.Args[0]=="--notification-test"||e.Args[0]=="--notification-live-test"||e.Args[0]=="--quality-test"||e.Args[0]=="--night-test");
         var visual=e.Args.Length==2&&e.Args[0]=="--visual-test";
         var deviceTest=e.Args.Length==2&&e.Args[0]=="--device-test";
         var uiTest=Array.IndexOf(e.Args,"--ui-test")>=0;
@@ -52,6 +55,7 @@ public partial class App : Application
         tray=new Forms.NotifyIcon{Text="Aster · Your island",Icon=System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!)??System.Drawing.SystemIcons.Application,Visible=!visual};
         var menu=new Forms.ContextMenuStrip();
         menu.Items.Add("Open island",null,(_,_)=>Dispatcher.Invoke(OpenIsland));
+        var nightItem=new Forms.ToolStripMenuItem("Night mode"){Checked=model.Preferences.NightMode};nightItem.Click+=(_,_)=>Dispatcher.Invoke(()=>{model.ToggleNightCommand.Execute(null);nightItem.Checked=model.Preferences.NightMode;});menu.Items.Add(nightItem);menu.Opening+=(_,_)=>nightItem.Checked=model.Preferences.NightMode;
         menu.Items.Add("Settings & local tools",null,(_,_)=>Dispatcher.Invoke(OpenSettings));
         menu.Items.Add("Hide island",null,(_,_)=>Dispatcher.Invoke(()=>model.UpdatePreferences(model.Preferences with{ShowOverlay=false})));
         menu.Items.Add("Quit Aster",null,(_,_)=>Dispatcher.Invoke(Quit));
@@ -61,7 +65,7 @@ public partial class App : Application
         if(Array.IndexOf(e.Args,"--connect-notifications")>=0){overlay.Machine.Expand(Aster.Core.IslandPage.Notifications);overlay.Activate();model.ConnectNotificationsCommand.Execute(null);}
         if(startupTest)
         {
-            try{if(e.Args[0]=="--notification-live-test")await NotificationLiveProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--notification-test")await NotificationProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--shelf-test")await ShelfProbe.RunAsync(overlay,model,e.Args[1]);else await StartupProbe.RunAsync(overlay,model,OpenIsland,e.Args[1]);Quit();}
+            try{if(e.Args[0]=="--night-test")await LiveQualityProbe.NightAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--quality-test")await LiveQualityProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--notification-live-test")await NotificationLiveProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--notification-test")await NotificationProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--shelf-test")await ShelfProbe.RunAsync(overlay,model,e.Args[1]);else await StartupProbe.RunAsync(overlay,model,OpenIsland,e.Args[1]);Quit();}
             catch(Exception error){Directory.CreateDirectory(e.Args[1]);await File.WriteAllTextAsync(Path.Combine(e.Args[1],"failure.txt"),error.ToString());Quit();Environment.ExitCode=1;}
             return;
         }
@@ -92,7 +96,7 @@ public partial class App : Application
     private void ApplyAppearance()
     {
         if(model is null)return;var p=model.Preferences;var light=p.Theme=="Light";
-        Brush BrushFor(string value)=>new SolidColorBrush((Color)ColorConverter.ConvertFromString(value));
+        Brush BrushFor(string value){var c=(Color)ColorConverter.ConvertFromString(value);byte g=(byte)Math.Round(.2126*c.R+.7152*c.G+.0722*c.B);return new SolidColorBrush(Color.FromArgb(c.A,g,g,g));}
         Resources["BackgroundBrush"]=BrushFor(p.BackgroundColor.Length>0?p.BackgroundColor:light?"#F3F6FA":"#10141D");
         Resources["CardBrush"]=BrushFor(p.CardColor.Length>0?p.CardColor:light?"#FFFFFF":"#1A2130");
         Resources["TextBrush"]=BrushFor(p.TextColor.Length>0?p.TextColor:light?"#182439":"#EFF4FA");

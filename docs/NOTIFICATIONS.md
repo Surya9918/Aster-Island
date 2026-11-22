@@ -20,7 +20,7 @@ Windows permission can be revoked in Settings → Privacy & security → Notific
 
 ## Validation
 
-104 unit checks passed, including inbox deduplication, bounded bursts, clear/dismiss retention, revocation cleanup, sanitization and transient text clearance. A real WPF harness exercises grouped cards, message expansion, animated dismissal, clear, privacy lock, three scales, repeated/interrupted springs and renders its own isolated fixture images. Separate native integration confirmed actual Windows toast delivery into the real model, Windows removal synchronization and disconnect clearing. Only booleans were recorded from the native test; no personal notification text or screenshots were retained.
+109 unit checks passed, including inbox deduplication, bounded bursts, clear/dismiss retention, revocation cleanup, sanitization and transient text clearance. A real WPF harness exercises grouped cards, message expansion, animated dismissal, clear, privacy lock, three scales, repeated/interrupted springs and renders its own isolated fixture images. Separate native integration confirmed actual Windows toast delivery into the real model, Windows removal synchronization and disconnect clearing. Only booleans were recorded from the native test; no personal notification text or screenshots were retained.
 
 Animation timing is measured on this display, not a guarantee of zero dropped frames or 120 FPS. Touch hardware, multi-monitor layouts, long-running battery usage and cross-device behavior still need dedicated validation.
 

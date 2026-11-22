@@ -1,8 +1,8 @@
 <Application x:Class="Aster.App.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" ShutdownMode="OnExplicitShutdown">
  <Application.Resources>
-  <SolidColorBrush x:Key="BackgroundBrush" Color="#10141D"/><SolidColorBrush x:Key="CardBrush" Color="#1A2130"/>
-  <SolidColorBrush x:Key="TextBrush" Color="#EFF4FA"/><SolidColorBrush x:Key="MutedBrush" Color="#A7B4C8"/>
-  <SolidColorBrush x:Key="AccentBrush" Color="#76D8CB"/><SolidColorBrush x:Key="BorderBrush" Color="#344052"/>
+  <SolidColorBrush x:Key="BackgroundBrush" Color="#141414"/><SolidColorBrush x:Key="CardBrush" Color="#212121"/>
+  <SolidColorBrush x:Key="TextBrush" Color="#F3F3F3"/><SolidColorBrush x:Key="MutedBrush" Color="#B3B3B3"/>
+  <SolidColorBrush x:Key="AccentBrush" Color="#C2C2C2"/><SolidColorBrush x:Key="BorderBrush" Color="#3F3F3F"/>
   <FontFamily x:Key="AppFont">Segoe UI</FontFamily><system:Double xmlns:system="clr-namespace:System;assembly=System.Runtime" x:Key="TextSize">14</system:Double>
   <CornerRadius x:Key="CardRadius">20</CornerRadius>
   <Style TargetType="Window"><Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="FontFamily" Value="{DynamicResource AppFont}"/><Setter Property="FontSize" Value="{DynamicResource TextSize}"/></Style>

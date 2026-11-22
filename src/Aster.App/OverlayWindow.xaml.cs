@@ -23,9 +23,12 @@ public partial class OverlayWindow : Window
     private readonly AppModel model;
     private readonly Action settings;
     public IslandStateMachine Machine { get; }
-    private readonly SpringValue width=new(224),height=new(40),radius=new(20),opacity=new(1),hover=new(0),progress=new(0),notice=new(0),top=new(8),hud=new(0),hudValue=new(0),content=new(0);
+    private readonly SpringValue width=new(224),height=new(40),radius=new(20),opacity=new(1),hover=new(0),progress=new(0),notice=new(0),top=new(8),hud=new(0),hudValue=new(0),content=new(0),nightBlend=new(0);
     private readonly SpringValue[] pages={new(0),new(0),new(0),new(0),new(0),new(1),new(0)};
     private readonly RectangleGeometry contentClip=new();
+    private readonly SpringValue[] frameSprings;
+    private readonly FrameworkElement[] pageViews;
+    private readonly TranslateTransform[] pageOffsets;
     private readonly Stopwatch clock=Stopwatch.StartNew();
     private readonly DispatcherTimer expiry,longPress,leave;
     private readonly List<IslandFrame> frames=[];
@@ -44,7 +47,7 @@ public partial class OverlayWindow : Window
     public OverlayWindow(AppModel model,Action settings)
     {
         this.model=model;this.settings=settings;Machine=new(new SystemClock());
-        InitializeComponent();DataContext=model;Glass.Bind(model,Machine);ExpandedContent.Clip=contentClip;
+        InitializeComponent();frameSprings=[width,height,radius,opacity,hover,progress,notice,top,hud,hudValue,content,nightBlend];pageViews=[MediaPage,FocusPage,ShelfPage,NotesPage,ControlsPage,TodayPage,NotificationsPage];pageOffsets=new TranslateTransform[pageViews.Length];for(int i=0;i<pageViews.Length;i++){pageOffsets[i]=new();pageViews[i].RenderTransform=pageOffsets[i];}DataContext=model;Glass.Bind(model,Machine);ExpandedContent.Clip=contentClip;
         expiry=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(100)};
         expiry.Tick+=(_,_)=>Machine.Tick();
         longPress=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(480)};
@@ -78,7 +81,7 @@ public partial class OverlayWindow : Window
     }
     private void Retarget()
     {
-        var state=Machine.Target;
+        var state=Machine.Target;nightBlend.Target=model.Preferences.NightMode?1:0;
         if(state==IslandState.Expanded&&Machine.Page==IslandPage.Notifications)model.MarkNotificationsRead();
         ExpandedContent.Height=Machine.Page==IslandPage.Notifications?342:286;
         if(state is IslandState.Notification or IslandState.SystemHud)expiry.Start();else expiry.Stop();
@@ -100,7 +103,7 @@ public partial class OverlayWindow : Window
         top.Target=state==IslandState.Stowed?-10:Math.Clamp(model.Preferences.TopOffset,4,160);EdgeSensor.IsHitTestVisible=state!=IslandState.Hidden;EdgeSensor.Visibility=state==IslandState.Hidden?Visibility.Hidden:Visibility.Visible;hud.Target=state==IslandState.SystemHud?1:0;hudValue.Target=Machine.HudValue;
         for(var i=0;i<pages.Length;i++)pages[i].Target=(int)Machine.Page==i?1:0;
         var buttons=new[]{MediaTab,FocusTab,ShelfTab,NotesTab,ControlsTab,TodayTab,NotificationsTab};
-        for(var i=0;i<buttons.Length;i++){buttons[i].Background=new SolidColorBrush(Color.FromArgb((byte)((int)Machine.Page==i?30:0),255,255,255));buttons[i].Foreground=new SolidColorBrush((int)Machine.Page==i?Color.FromRgb(166,235,218):Color.FromRgb(143,153,171));}
+        for(var i=0;i<buttons.Length;i++){buttons[i].Background=new SolidColorBrush(Color.FromArgb((byte)((int)Machine.Page==i?30:0),255,255,255));buttons[i].Foreground=new SolidColorBrush((int)Machine.Page==i?Color.FromRgb(219,219,219):Color.FromRgb(152,152,152));}
         Footer.Text=Machine.ActivityCount>1?"Focus + music · both activities are running.":Machine.Page==IslandPage.Notes?"Saved locally. No sync, no account.":"Local by default. Quiet by nature.";
         Wake();
     }
@@ -114,7 +117,7 @@ public partial class OverlayWindow : Window
         var start=Stopwatch.GetTimestamp();
         var interval=lastRender==TimeSpan.MinValue?0:(timing.RenderingTime-lastRender).TotalSeconds;lastRender=timing.RenderingTime;
         var dt=interval<=0?1d/120:Math.Min(interval,.1);
-        var springs=new[]{width,height,radius,opacity,hover,progress,notice,top,hud,hudValue,content};
+        var springs=frameSprings;
         foreach(var spring in springs)
         {
             if(model.Preferences.ReducedMotion){spring.Snap(spring.Target);continue;}
@@ -130,19 +133,22 @@ public partial class OverlayWindow : Window
         var alpha=Math.Clamp(opacity.Position,0,1);
         var paintWidth=Math.Clamp(width.Position,80,720);var paintHeight=Math.Clamp(height.Position,4,390);var paintRadius=Math.Clamp(radius.Position,2,paintHeight/2);
         var noticeAlpha=Math.Clamp(notice.Position,0,1)*Smooth((150-height.Position)/45)*Smooth((height.Position-45)/30);
-        Glass.Frame(paintWidth,paintHeight,paintRadius,alpha,reveal,clock.Elapsed.TotalSeconds,hover.Position,progress.Position,noticeAlpha,light,top.Position,hud.Position,hudValue.Position);
+        Glass.Frame(paintWidth,paintHeight,paintRadius,alpha,reveal,clock.Elapsed.TotalSeconds,hover.Position,progress.Position,noticeAlpha,light,top.Position,hud.Position,hudValue.Position,Math.Clamp(nightBlend.Position,0,1));
+        var compactGlyph=Smooth((105-paintHeight)/45)*Smooth((paintHeight-16)/22)*(1-noticeAlpha)*(1-Math.Clamp(hud.Position,0,1));
+        CompactEye.Opacity=alpha*Math.Clamp(noticeAlpha+((model.MediaArtwork is not null&&model.MediaAvailable)?0:compactGlyph),0,1)*(1-.2*Math.Clamp(nightBlend.Position,0,1));
+        Canvas.SetLeft(CompactEye,Glass.Bounds.X+(noticeAlpha>.5?21:16));Canvas.SetTop(CompactEye,Glass.Bounds.Y+(noticeAlpha>.5?21:paintHeight/2-9));
         HitPad.Width=paintWidth;HitPad.Height=Math.Max(14,paintHeight);HitPad.CornerRadius=new(paintRadius);Canvas.SetLeft(HitPad,(760-paintWidth)/2);Canvas.SetTop(HitPad,top.Position);
         HitPad.IsHitTestVisible=Machine.Target!=IslandState.Hidden;
         HitPad.Opacity=alpha;
         var contentInteractive=Machine.Target==IslandState.Expanded&&reveal>.8;
-        ExpandedContent.Opacity=reveal*alpha;ExpandedContent.IsHitTestVisible=contentInteractive;
+        ExpandedContent.Opacity=reveal*alpha*(1-.14*Math.Clamp(nightBlend.Position,0,1));ExpandedContent.IsHitTestVisible=contentInteractive;
         ExpandedContent.IsEnabled=contentInteractive;
         // Hidden only after opacity reaches zero: retain layout/views without invisible tab stops.
         ExpandedContent.Visibility=reveal*alpha>.0001?Visibility.Visible:Visibility.Hidden;
         ContentScale.ScaleX=ContentScale.ScaleY=.955+.045*Math.Clamp(content.Position,0,1);ContentOffset.Y=12*(1-Math.Clamp(content.Position,0,1));
         contentClip.Rect=new Rect((760-paintWidth)/2-130,top.Position-43,paintWidth,paintHeight);contentClip.RadiusX=contentClip.RadiusY=paintRadius;
-        var views=new[]{MediaPage,FocusPage,ShelfPage,NotesPage,ControlsPage,TodayPage,NotificationsPage};
-        for(var i=0;i<views.Length;i++){var active=(int)Machine.Page==i&&pages[i].Position>.8;views[i].Opacity=Math.Clamp(pages[i].Position,0,1);views[i].IsHitTestVisible=active;views[i].IsEnabled=active;views[i].Visibility=views[i].Opacity>.0001?Visibility.Visible:Visibility.Hidden;views[i].RenderTransform=new TranslateTransform((1-pages[i].Position)*10,0);}
+        var views=pageViews;
+        for(var i=0;i<views.Length;i++){var active=(int)Machine.Page==i&&pages[i].Position>.8;views[i].Opacity=Math.Clamp(pages[i].Position,0,1);views[i].IsHitTestVisible=active;views[i].IsEnabled=active;views[i].Visibility=views[i].Opacity>.0001?Visibility.Visible:Visibility.Hidden;pageOffsets[i].X=(1-pages[i].Position)*10;}
         var update=(Stopwatch.GetTimestamp()-start)*1000d/Stopwatch.Frequency;
         if(IsVisualTesting&&frames.Count<30000)frames.Add(new(clock.Elapsed.TotalMilliseconds,interval*1000,update,width.Position,height.Position,Machine.Target.ToString()));
         if(springs.All(s=>s.Settled)&&pages.All(s=>s.Settled))
@@ -155,7 +161,7 @@ public partial class OverlayWindow : Window
     private static double Smooth(double value){value=Math.Clamp(value,0,1);return value*value*(3-2*value);}
     public void Place(Preferences p)
     {
-        configuration=new(p.SpringStiffness,p.SpringDamping,p.SpringMass);
+        configuration=NightMotion.Adapt(new(p.SpringStiffness,p.SpringDamping,p.SpringMass),p.NightMode);
         FontFamily=new FontFamily(p.Font);
         var hwnd=new WindowInteropHelper(this).Handle;if(hwnd==IntPtr.Zero)return;
         var screens=System.Windows.Forms.Screen.AllScreens;var screen=screens[Math.Min(p.Monitor,screens.Length-1)];var area=screen.WorkingArea;

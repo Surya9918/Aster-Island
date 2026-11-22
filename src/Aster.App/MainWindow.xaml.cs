@@ -21,7 +21,7 @@ public partial class MainWindow : Window
         MonitorBox.ItemsSource = System.Windows.Forms.Screen.AllScreens.Select((s, i) => $"Display {i + 1} · {s.Bounds.Width} × {s.Bounds.Height}").ToArray();
         LoadAppearance();
         Closing += OnClosing;
-        model.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(AppModel.Preferences))SpotifyWallpaperCheck.IsChecked=model.Preferences.SpotifyWallpaper;};
+        model.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(AppModel.Preferences)){SpotifyWallpaperCheck.IsChecked=model.Preferences.SpotifyWallpaper;NightModeCheck.IsChecked=model.Preferences.NightMode;}};
     }
     private void OnClosing(object? sender, CancelEventArgs e) { if (Exiting) return; e.Cancel = true; Hide(); }
     private void HideWindow(object sender, RoutedEventArgs e) => Hide();
@@ -42,7 +42,7 @@ public partial class MainWindow : Window
     }
     private void LoadAppearance()
     {
-        var p = model.Preferences;
+        var p = model.Preferences;NightModeCheck.IsChecked=p.NightMode;
         ThemeBox.SelectedIndex = p.Theme == "Light" ? 1 : 0; AccentBox.Text = p.Accent;
         BackgroundBox.Text = p.BackgroundColor; CardBox.Text = p.CardColor; TextColorBox.Text = p.TextColor;
         FontBox.Text = p.Font; ScaleSlider.Value = p.TextScale; RadiusSlider.Value = p.Radius; WidthSlider.Value = p.OverlayWidth;
@@ -62,7 +62,7 @@ public partial class MainWindow : Window
         { model.Error("COLOR_INVALID", "Enter colors as #RRGGBB; overrides may be empty."); return; }
         model.UpdatePreferences(model.Preferences with
         {
-            Theme = ThemeBox.SelectedIndex == 1 ? "Light" : "Dark", Accent = AccentBox.Text,
+            NightMode=NightModeCheck.IsChecked==true, Theme = ThemeBox.SelectedIndex == 1 ? "Light" : "Dark", Accent = AccentBox.Text,
             BackgroundColor = BackgroundBox.Text, CardColor = CardBox.Text, TextColor = TextColorBox.Text,
             Font = FontBox.Text, TextScale = ScaleSlider.Value, Radius = RadiusSlider.Value, OverlayWidth = WidthSlider.Value,
             Opacity = OpacitySlider.Value, TopOffset = OffsetSlider.Value, Monitor = Math.Max(0, MonitorBox.SelectedIndex),

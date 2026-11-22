@@ -162,7 +162,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
         clockTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Tick(), dispatcher);
         saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(650) };
         saveTimer.Tick += (_, _) => { saveTimer.Stop(); Save(); };
-        InitializeNotifications();
+        InitializeNotifications();InitializeLive();
         ToggleWallpaperCommand=new ActionCommand(_=>UpdatePreferences(Preferences with{SpotifyWallpaper=!Preferences.SpotifyWallpaper}));
         MediaCommand = new AsyncCommand(async p => { if (!await media.ControlAsync(p as string ?? "toggle")) Status = "This player does not support that control."; }, () => Error("MEDIA_CONTROL_FAILED", "The media control was unavailable."));
         ToggleFocusCommand = new ActionCommand(_ => { if (focus.Running) focus.Pause(); else focus.Start(); FocusStatus = focus.Running ? "Focus session in progress" : "Focus paused"; TimerChanged(); });
@@ -193,6 +193,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     }
     public async Task StartAsync()
     {
+        await StartHeadphones();
         RefreshPower(); RefreshAudio();
         try { Brightness = await Task.Run(BrightnessService.Read); Changed(nameof(Brightness)); Changed(nameof(BrightnessState));Changed(nameof(BrightnessAvailable)); } catch { Log.Record("BRIGHTNESS_UNAVAILABLE"); }
         try{WifiState=await RadioService.ReadAsync(false);BluetoothState=await RadioService.ReadAsync(true);Changed(nameof(WifiState));Changed(nameof(BluetoothState));}catch{Log.Record("RADIOS_UNAVAILABLE");}
@@ -201,7 +202,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     private void Tick()
     {
         if (closing) return;
-        TickNotifications();
+        TickNotifications();TickHeadphones();
         var wasRunning = focus.Running;
         if (focus.CompleteIfDue()) { FocusStatus = "Focus complete. Take a breath."; Status = "Your focus session is complete."; PublishNotice("A little pause.", "Your focus session is complete. Take a breath."); }
         if (wasRunning) TimerChanged();
@@ -278,7 +279,7 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     }
     public void UpdatePreferences(Preferences preferences)
     {
-        Preferences = preferences.Validated(); Changed(nameof(Preferences)); Changed(nameof(CardWidth));Changed(nameof(TaskbarTile));Changed(nameof(WallpaperButtonLabel)); AppearanceChanged?.Invoke();
+        Preferences = preferences.Validated(); Changed(nameof(Preferences)); Changed(nameof(CardWidth));Changed(nameof(TaskbarTile));Changed(nameof(WallpaperButtonLabel));Changed(nameof(NightModeLabel)); AppearanceChanged?.Invoke();
         try { Store.Save("preferences.json", Preferences); Status = "Appearance saved."; } catch { Error("SETTINGS_SAVE_FAILED", "Preferences could not be saved. Check folder access."); }
     }
     private void QueueSave() { if (closing) return; saveTimer.Stop(); saveTimer.Start(); }
@@ -298,6 +299,6 @@ public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     public void Dispose()
     {
-        StopNotifications(); if (!closing) Save(); closing = true; clockTimer.Stop(); saveTimer.Stop(); ClipboardHistory.SetEnabled(false); Consent.Revoke(); media.Dispose(); weather.Dispose(); Consent.Dispose();
+        StopHeadphones();StopNotifications(); if (!closing) Save(); closing = true; clockTimer.Stop(); saveTimer.Stop(); ClipboardHistory.SetEnabled(false); Consent.Revoke(); media.Dispose(); weather.Dispose(); Consent.Dispose();
     }
 }

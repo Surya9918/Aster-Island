@@ -27,7 +27,7 @@ public sealed class GlassFader:FrameworkElement
     }
     private void Frame(object? sender,EventArgs args)
     {
-        var now=Stopwatch.GetTimestamp();fill.Step(Math.Clamp((now-last)/(double)Stopwatch.Frequency,0,.1),new(420,38,1));last=now;InvalidateVisual();
+        var now=Stopwatch.GetTimestamp();var p=(Window.GetWindow(this)?.DataContext as AppModel)?.Preferences;if(p?.ReducedMotion==true)fill.Snap(fill.Target);else fill.Step(Math.Clamp((now-last)/(double)Stopwatch.Frequency,0,.1),NightMotion.Adapt(new(420,38,1),p?.NightMode==true));last=now;InvalidateVisual();
         if(fill.Settled){CompositionTarget.Rendering-=Frame;running=false;}
     }
     protected override void OnRender(DrawingContext dc)
@@ -36,8 +36,8 @@ public sealed class GlassFader:FrameworkElement
         dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(21,255,255,255)),new Pen(new SolidColorBrush(Color.FromArgb(22,255,255,255)),.7),r,radius,radius);
         dc.PushClip(new RectangleGeometry(r,radius,radius));
         var height=r.Height*Math.Clamp(fill.Position/100,0,1);
-        dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(225,235,230),Color.FromRgb(181,218,208),90),null,new Rect(0,r.Height-height,r.Width,height));
-        dc.Pop();var brush=new SolidColorBrush(height>32?Color.FromRgb(24,42,39):Color.FromRgb(233,239,237));
+        dc.DrawRectangle(new LinearGradientBrush(Color.FromRgb(233,233,233),Color.FromRgb(209,209,209),90),null,new Rect(0,r.Height-height,r.Width,height));
+        dc.Pop();var brush=new SolidColorBrush(height>32?Color.FromRgb(38,38,38):Color.FromRgb(238,238,238));
         var text=new FormattedText($"{Math.Round(Value):0}%",CultureInfo.CurrentCulture,FlowDirection.LeftToRight,new Typeface("Segoe UI Semibold"),14,Brushes.White,VisualTreeHelper.GetDpi(this).PixelsPerDip);
         dc.DrawText(text,new((r.Width-text.Width)/2,12));
         var icon=new Pen(brush,1.7){StartLineCap=PenLineCap.Round,EndLineCap=PenLineCap.Round};var cx=r.Width/2;var cy=r.Height-27;
@@ -49,7 +49,7 @@ public sealed class GlassFader:FrameworkElement
         {
             var g=Geometry.Parse("M0,5 L4,5 L9,0 L9,18 L4,13 L0,13 Z M13,4 Q18,9 13,14");dc.PushTransform(new TranslateTransform(cx-8,cy-9));dc.DrawGeometry(null,icon,g);dc.Pop();
         }
-        if(IsKeyboardFocused)dc.DrawRoundedRectangle(null,new Pen(new SolidColorBrush(Color.FromRgb(146,232,212)),1.4),new Rect(1,1,r.Width-2,r.Height-2),radius,radius);
+        if(IsKeyboardFocused)dc.DrawRoundedRectangle(null,new Pen(new SolidColorBrush(Color.FromRgb(212,212,212)),1.4),new Rect(1,1,r.Width-2,r.Height-2),radius,radius);
     }
     private void Pointer(Point point)=>SetCurrentValue(ValueProperty,Math.Clamp(100*(1-point.Y/Math.Max(1,ActualHeight)),0,100));
     private void Commit()=>ValueCommitted?.Invoke(this,EventArgs.Empty);

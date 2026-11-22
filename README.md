@@ -3,6 +3,10 @@
 A native ARM64 desktop island for Windows: a compact floating pill that expands into local music controls, a focus timer, a file shelf, notes and sound controls. Settings and additional local tools open separately. Original source and vector artwork; no proprietary app binaries or assets are used.
 
 
+## Living monochrome island · 120 Hz
+
+[Current design and measured performance](docs/LIVE-120HZ.md): original animated eye, monochrome materials, native headphone connection cards and persistent night mode. Night mode is available in Sound controls, the tray and Appearance. The display must be configured for 120 Hz to target 8.33 ms; exact per-frame timing is not guaranteed.
+
 ## Notification inbox
 
 [Notification setup, privacy and Windows banner behavior](docs/NOTIFICATIONS.md). The bell tab (Ctrl+7) shows grouped local and Windows notifications with spring card entrances, expandable text, smooth dismissal and layout reflow. Mirroring requires the separate signed identity package and Windows permission. Taskbar features remain off.
@@ -80,7 +84,7 @@ src/
   Aster.Platform.Windows/     native audio, battery, brightness, Windows media sessions
   Aster.App/                  island window, vector glass, retained activity views, settings
 tests/
-  Aster.Tests/                104 executable automated tests
+  Aster.Tests/                109 executable automated tests
   visual-baselines/           reviewed own-window renders
 scripts/                     build, PE/source audit, visual regression and preview tools
 docs/                        inventory, architecture, privacy, validation and troubleshooting

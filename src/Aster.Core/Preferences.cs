@@ -4,6 +4,7 @@ namespace Aster.Core;
 
 public sealed record Preferences
 {
+    public bool NightMode { get; init; }
     public bool NotificationsEnabled { get; init; }
     public bool NotificationPreviews { get; init; } = true;
     public string Theme { get; init; } = "Dark";
