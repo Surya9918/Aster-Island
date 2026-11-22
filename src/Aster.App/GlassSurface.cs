@@ -19,6 +19,7 @@ public sealed class GlassSurface : FrameworkElement
     public Rect Bounds {get;private set;}=new(256,20,248,48);
     public double Radius {get;private set;}=24;
     private double alpha=1,expanded,clock,hover,progress,notice,hud,hudValue;private Point pointer=new(.5,.1);
+    public void ClearPrivateText(){cache.Clear();InvalidateVisual();}
     public void Bind(AppModel value,IslandStateMachine machine){model=value;state=machine;}
     public void Frame(double width,double height,double radius,double opacity,double reveal,double time,double hoverAmount,double focusProgress,double notificationOpacity,Point light,double surfaceTop=20,double hudOpacity=0,double level=0)
     {Bounds=new((ActualWidth-width)/2,surfaceTop,width,height);Radius=radius;alpha=opacity;expanded=reveal;clock=time;hover=hoverAmount;progress=focusProgress;notice=notificationOpacity;pointer=light;hud=hudOpacity;hudValue=level;InvalidateVisual();}

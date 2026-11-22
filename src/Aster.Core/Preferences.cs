@@ -4,6 +4,8 @@ namespace Aster.Core;
 
 public sealed record Preferences
 {
+    public bool NotificationsEnabled { get; init; }
+    public bool NotificationPreviews { get; init; } = true;
     public string Theme { get; init; } = "Dark";
     public string Accent { get; init; } = "#76D8CB";
     public string BackgroundColor { get; init; } = "";

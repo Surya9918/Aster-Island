@@ -3,9 +3,9 @@
 A native ARM64 desktop island for Windows: a compact floating pill that expands into local music controls, a focus timer, a file shelf, notes and sound controls. Settings and additional local tools open separately. Original source and vector artwork; no proprietary app binaries or assets are used.
 
 
-## Current status
+## Notification inbox
 
-Includes the startup visibility fix (95 unit checks plus a real WPF startup/hide/reopen probe). Taskbar customization is off. The unfinished custom dock is preserved separately on the `dock-work-in-progress` branch. See [startup fix](docs/STARTUP-VISIBILITY-FIX.md).
+[Notification setup, privacy and Windows banner behavior](docs/NOTIFICATIONS.md). The bell tab (Ctrl+7) shows grouped local and Windows notifications with spring card entrances, expandable text, smooth dismissal and layout reflow. Mirroring requires the separate signed identity package and Windows permission. Taskbar features remain off.
 
 ## Current glass update
 
@@ -28,7 +28,7 @@ Extract **Aster-Glass-win-arm64.zip** into a folder you own and open **Aster.App
 - Touch handlers support tap, long press, vertical expand/collapse and horizontal activity swipes. Physical touch and precision-trackpad gesture validation remains pending.
 - Use the settings icon or tray menu for settings and additional tools. Closing settings hides it. Use the tray's Quit Aster to exit.
 
-The island stays above ordinary windows; it is not an exclusive-fullscreen game overlay. Hide suppresses the island for the current session. New launches restore the compact island automatically; the tray or shortcut also restores it and saves the visible preference.
+The island stays above ordinary windows; it is not an exclusive-fullscreen game overlay. A saved Hide setting suppresses it; the tray or shortcut can restore it.
 
 ## Customize
 
@@ -68,7 +68,7 @@ Reviewed baseline PNGs are in `tests/glass-visual-baselines`. Review changed ren
 
 ## Scope and release status
 
-This is a working island-first build, not a complete recreation of every reference feature or a certified production release. Notification presentation currently handles Aster's own events, including focus completion and file-shelf additions; Windows notification mirroring is not implemented. Phone remote/sharing, browser hosting, recording, game overlays and taskbar replacement are not included. There are no inert substitutes for those features. See [FEATURE-MAP.md](docs/FEATURE-MAP.md), [VALIDATION.md](docs/VALIDATION.md), and [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+This is a working island-first build, not a complete recreation of every reference feature or a certified production release. Notification presentation includes Aster’s own events and optional Windows Notification Center mirroring. See the notification guide for permission, supported senders and banner limits. Phone remote/sharing, browser hosting, recording, game overlays and taskbar replacement are not included. There are no inert substitutes for those features. See [FEATURE-MAP.md](docs/FEATURE-MAP.md), [VALIDATION.md](docs/VALIDATION.md), and [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Source structure
 
@@ -80,7 +80,7 @@ src/
   Aster.Platform.Windows/     native audio, battery, brightness, Windows media sessions
   Aster.App/                  island window, vector glass, retained activity views, settings
 tests/
-  Aster.Tests/                81 executable automated tests
+  Aster.Tests/                104 executable automated tests
   visual-baselines/           reviewed own-window renders
 scripts/                     build, PE/source audit, visual regression and preview tools
 docs/                        inventory, architecture, privacy, validation and troubleshooting

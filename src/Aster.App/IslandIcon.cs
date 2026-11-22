@@ -11,6 +11,7 @@ public sealed class IslandIcon:FrameworkElement
     public Brush Stroke{get=>(Brush)GetValue(StrokeProperty);set=>SetValue(StrokeProperty,value);}
     private static readonly Dictionary<string,string> paths=new()
     {
+        ["bell"]="M5,16 L5,10 Q5,3 12,3 Q19,3 19,10 L19,16 L22,19 L2,19 Z M9,22 Q12,25 15,22 M12,1 L12,3",
         ["today"]="M3,3 L9,3 L9,9 L3,9 Z M15,3 L21,3 L21,9 L15,9 Z M3,15 L9,15 L9,21 L3,21 Z M15,15 L21,15 L21,21 L15,21 Z",
         ["music"]="M9,18 L9,5 L20,3 L20,16 M9,18 A3,3 0 1 1 3,18 A3,3 0 1 1 9,18 M20,16 A3,3 0 1 1 14,16 A3,3 0 1 1 20,16",
         ["focus"]="M12,4 A8,8 0 1 1 11.99,4 M9,1 L15,1 M12,8 L12,12 L16,14",

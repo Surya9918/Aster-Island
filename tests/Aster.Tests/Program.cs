@@ -13,6 +13,16 @@ static void Throws<T>(Action action) where T : Exception { try { action(); } cat
 static async Task ThrowsAsync<T>(Func<Task> action) where T : Exception { try { await action(); } catch (T) { return; } throw new InvalidOperationException($"Expected {typeof(T).Name}"); }
 static string TempFolder() => Path.Combine(Path.GetTempPath(), "AsterTests", Guid.NewGuid().ToString("N"));
 
+static IslandNotification N(string key,string app="Chat",bool external=true)=>new(key,app,app,"Title","Body",DateTimeOffset.Parse("2026-11-22T10:00:00Z"),external);
+Test("Notifications seed history without replaying old banners",()=>{var b=new NotificationInbox();Equal(0,b.Sync(new[]{N("1")}).Count);Equal(1,b.Items.Count);Equal(0,b.Sync(new[]{N("1")}).Count);Equal(1,b.Sync(new[]{N("1"),N("2")}).Count);});
+Test("Older history entering a bounded snapshot does not replay a banner",()=>{var b=new NotificationInbox();b.Sync(new[]{N("recent")});var older=N("old") with{Created=DateTimeOffset.Parse("2026-11-21T10:00:00Z")};Equal(0,b.Sync(new[]{older}).Count);Equal(1,b.Items.Count);});
+Test("Notifications deduplicate and bound a burst",()=>{var b=new NotificationInbox();b.Sync(Enumerable.Range(0,500).Select(i=>N(i.ToString())).Concat(new[]{N("1")}));Equal(100,b.Items.Count);Equal(100,b.Items.Select(n=>n.Key).Distinct().Count());});
+Test("Dismissed notifications remain hidden on polling",()=>{var b=new NotificationInbox();b.Sync(new[]{N("1")});b.Hide("1");Equal(0,b.Sync(new[]{N("1")}).Count);Equal(0,b.Items.Count);});
+Test("Clear island hides only current displayed messages",()=>{var b=new NotificationInbox();b.Sync(new[]{N("1")});b.AddLocal("A","B",DateTimeOffset.Now);b.ClearVisible();Equal(0,b.Items.Count);b.Sync(new[]{N("1"),N("2")});Equal("2",b.Items.Single().Key);});
+Test("Windows dismissal and disconnect remove stale copies",()=>{var b=new NotificationInbox();b.Sync(new[]{N("1")});b.Sync([]);Equal(0,b.Items.Count);b.AddLocal("Local","Body",DateTimeOffset.Now);b.Sync(new[]{N("2")});b.Disconnect();Equal(1,b.Items.Count);Assert(!b.Items[0].External);b.ClearAll();Equal(0,b.Items.Count);});
+Test("Notification content is bounded and strips control characters",()=>{var n=(N("1") with{Title="a\0b",Body=new string('x',4000)}).Bounded();Equal("ab",n.Title);Equal(2000,n.Body.Length);});
+Test("Notification inbox never accepts external status for local records",()=>{var b=new NotificationInbox();b.Sync(new[]{N("1",external:false)});Equal(0,b.Items.Count);});
+Test("Notification transient clears private strings",()=>{var b=new IslandStateMachine(new FakeClock());b.Notify("Private","Message");b.ClearNotice();Equal("",b.NoticeTitle);Equal("",b.NoticeDetail);});
 Test("Preferences reject malformed colors", () => Equal("#76D8CB", new Preferences { Accent = "red; bad" }.Validated().Accent));
 Test("Preferences retain valid independent colors", () => { var p = new Preferences { BackgroundColor = "#123456", CardColor = "#234567", TextColor = "#FFFFFF" }.Validated(); Equal("#123456", p.BackgroundColor); Equal("#234567", p.CardColor); Equal("#FFFFFF", p.TextColor); });
 Test("Preferences clamp unsafe opacity and width", () => { var p = new Preferences { OverlayWidth = 9000, Opacity = .1 }.Validated(); Equal(680d, p.OverlayWidth); Equal(.85, p.Opacity); });

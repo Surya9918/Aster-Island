@@ -6,3 +6,8 @@ artifacts/
 *.log
 .env
 .env.*
+*.pfx
+*.p12
+*.key
+*.cer
+*.msix

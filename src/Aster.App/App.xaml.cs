@@ -27,7 +27,7 @@ public partial class App : Application
         {try{await TaskbarProbe.RunAsync(e.Args[1]);Shutdown(0);}catch{Shutdown(1);}return;}
         if(e.Args.Length==1&&e.Args[0]=="--foreground-helper")
         {var helper=new Window{Title="Aster maximized-window test",ShowInTaskbar=true,Background=Brushes.Black};helper.Loaded+=(_,_)=>{helper.WindowState=WindowState.Maximized;helper.Activate();};helper.Show();helper.Activate();await System.Threading.Tasks.Task.Delay(2200);helper.Close();Shutdown();return;}
-        var startupTest=e.Args.Length==2&&(e.Args[0]=="--startup-test"||e.Args[0]=="--shelf-test");
+        var startupTest=e.Args.Length==2&&(e.Args[0]=="--startup-test"||e.Args[0]=="--shelf-test"||e.Args[0]=="--notification-test"||e.Args[0]=="--notification-live-test");
         var visual=e.Args.Length==2&&e.Args[0]=="--visual-test";
         var deviceTest=e.Args.Length==2&&e.Args[0]=="--device-test";
         var uiTest=Array.IndexOf(e.Args,"--ui-test")>=0;
@@ -56,11 +56,12 @@ public partial class App : Application
         menu.Items.Add("Hide island",null,(_,_)=>Dispatcher.Invoke(()=>model.UpdatePreferences(model.Preferences with{ShowOverlay=false})));
         menu.Items.Add("Quit Aster",null,(_,_)=>Dispatcher.Invoke(Quit));
         tray.ContextMenuStrip=menu;tray.DoubleClick+=(_,_)=>Dispatcher.Invoke(OpenIsland);
-        SystemEvents.DisplaySettingsChanged+=DisplayChanged;
+        SystemEvents.DisplaySettingsChanged+=DisplayChanged;SystemEvents.SessionSwitch+=SessionChanged;
         overlay.Show();overlay.Place(model.Preferences);overlay.SetVisible(model.Preferences.ShowOverlay);
+        if(Array.IndexOf(e.Args,"--connect-notifications")>=0){overlay.Machine.Expand(Aster.Core.IslandPage.Notifications);overlay.Activate();model.ConnectNotificationsCommand.Execute(null);}
         if(startupTest)
         {
-            try{if(e.Args[0]=="--shelf-test")await ShelfProbe.RunAsync(overlay,model,e.Args[1]);else await StartupProbe.RunAsync(overlay,model,OpenIsland,e.Args[1]);Quit();}
+            try{if(e.Args[0]=="--notification-live-test")await NotificationLiveProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--notification-test")await NotificationProbe.RunAsync(overlay,model,e.Args[1]);else if(e.Args[0]=="--shelf-test")await ShelfProbe.RunAsync(overlay,model,e.Args[1]);else await StartupProbe.RunAsync(overlay,model,OpenIsland,e.Args[1]);Quit();}
             catch(Exception error){Directory.CreateDirectory(e.Args[1]);await File.WriteAllTextAsync(Path.Combine(e.Args[1],"failure.txt"),error.ToString());Quit();Environment.ExitCode=1;}
             return;
         }
@@ -86,6 +87,7 @@ public partial class App : Application
         if(center is null){center=new(model){Title="Aster · Settings & local tools"};center.Opacity=model.Preferences.Opacity;}
         center.Show();if(center.WindowState==WindowState.Minimized)center.WindowState=WindowState.Normal;center.Activate();
     }
+    private void SessionChanged(object sender,SessionSwitchEventArgs e)=>Dispatcher.BeginInvoke(()=>{if(e.Reason==SessionSwitchReason.SessionLock){model?.LockNotifications(true);overlay?.ClearNotificationPrivacy();overlay?.Machine.SetHidden(true);}else if(e.Reason==SessionSwitchReason.SessionUnlock){model?.LockNotifications(false);if(model?.Preferences.ShowOverlay==true)overlay?.SetVisible(true);}});
     private void DisplayChanged(object? sender,EventArgs args)=>Dispatcher.BeginInvoke(()=>{if(model is not null&&!quitting)overlay?.Place(model.Preferences);});
     private void ApplyAppearance()
     {
@@ -113,7 +115,7 @@ public partial class App : Application
     private void Quit()
     {
         if(quitting)return;quitting=true;ListenClipboard(false);if(hotkey)UnregisterHotKey(handle,1);
-        source?.RemoveHook(WindowMessage);SystemEvents.DisplaySettingsChanged-=DisplayChanged;desktop?.Dispose();tray?.Dispose();tray=null;model?.Dispose();
+        source?.RemoveHook(WindowMessage);SystemEvents.DisplaySettingsChanged-=DisplayChanged;SystemEvents.SessionSwitch-=SessionChanged;desktop?.Dispose();tray?.Dispose();tray=null;model?.Dispose();
         if(center is not null)center.Exiting=true;if(overlay is not null)overlay.Exiting=true;overlay?.Close();center?.Close();Shutdown();
     }
     protected override void OnExit(ExitEventArgs e){if(!quitting){desktop?.Dispose();tray?.Dispose();model?.Dispose();}if(ownsMutex)mutex?.ReleaseMutex();mutex?.Dispose();base.OnExit(e);}

@@ -19,7 +19,7 @@ namespace Aster.App;
 
 public sealed record ShelfRow(string Path, string Name, string State);
 public sealed record CalendarCell(string Letter,string Day,bool Today);
-public sealed class AppModel : INotifyPropertyChanged, IDisposable
+public sealed partial class AppModel : INotifyPropertyChanged, IDisposable
 {
     public LocalStore Store { get; }
     public Diagnostics Log { get; }
@@ -162,6 +162,7 @@ public sealed class AppModel : INotifyPropertyChanged, IDisposable
         clockTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Tick(), dispatcher);
         saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(650) };
         saveTimer.Tick += (_, _) => { saveTimer.Stop(); Save(); };
+        InitializeNotifications();
         ToggleWallpaperCommand=new ActionCommand(_=>UpdatePreferences(Preferences with{SpotifyWallpaper=!Preferences.SpotifyWallpaper}));
         MediaCommand = new AsyncCommand(async p => { if (!await media.ControlAsync(p as string ?? "toggle")) Status = "This player does not support that control."; }, () => Error("MEDIA_CONTROL_FAILED", "The media control was unavailable."));
         ToggleFocusCommand = new ActionCommand(_ => { if (focus.Running) focus.Pause(); else focus.Start(); FocusStatus = focus.Running ? "Focus session in progress" : "Focus paused"; TimerChanged(); });
@@ -200,8 +201,9 @@ public sealed class AppModel : INotifyPropertyChanged, IDisposable
     private void Tick()
     {
         if (closing) return;
+        TickNotifications();
         var wasRunning = focus.Running;
-        if (focus.CompleteIfDue()) { FocusStatus = "Focus complete. Take a breath."; Status = "Your focus session is complete."; IslandNotice?.Invoke("A little pause.", "Your focus session is complete. Take a breath."); }
+        if (focus.CompleteIfDue()) { FocusStatus = "Focus complete. Take a breath."; Status = "Your focus session is complete."; PublishNotice("A little pause.", "Your focus session is complete. Take a breath."); }
         if (wasRunning) TimerChanged();
         if (ticks % 15 == 0) { Changed(nameof(ClockText)); Changed(nameof(DateText)); }
         if (++ticks % 15 == 0) { RefreshPower(); if (ClipboardEnabled) Changed(nameof(Clips)); }
@@ -238,7 +240,7 @@ public sealed class AppModel : INotifyPropertyChanged, IDisposable
             if (System.IO.Path.IsPathFullyQualified(path) && !path.StartsWith(@"\\", StringComparison.Ordinal) && File.Exists(path) && !data.Shelf.Contains(path, StringComparer.OrdinalIgnoreCase)) data.Shelf.Add(path);
         }
         Changed(nameof(Shelf)); Changed(nameof(ShelfCount)); QueueSave(); Status = "Shelf stores local references. Original files stay in place.";
-        IslandNotice?.Invoke("Within reach.", $"{data.Shelf.Count} local file reference{(data.Shelf.Count == 1 ? "" : "s")} on your shelf.");
+        PublishNotice("Within reach.", $"{data.Shelf.Count} local file reference{(data.Shelf.Count == 1 ? "" : "s")} on your shelf.");
     }
     private void OpenFile(string path)
     {
@@ -296,6 +298,6 @@ public sealed class AppModel : INotifyPropertyChanged, IDisposable
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     public void Dispose()
     {
-        if (!closing) Save(); closing = true; clockTimer.Stop(); saveTimer.Stop(); ClipboardHistory.SetEnabled(false); Consent.Revoke(); media.Dispose(); weather.Dispose(); Consent.Dispose();
+        StopNotifications(); if (!closing) Save(); closing = true; clockTimer.Stop(); saveTimer.Stop(); ClipboardHistory.SetEnabled(false); Consent.Revoke(); media.Dispose(); weather.Dispose(); Consent.Dispose();
     }
 }

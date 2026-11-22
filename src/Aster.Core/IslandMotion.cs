@@ -51,7 +51,7 @@ public sealed class SpringValue(double initial)
 }
 
 public enum IslandState { Idle, Hover, Expanded, Notification, PersistentActivity, Transition, Hidden, Stowed, SystemHud }
-public enum IslandPage { Media, Focus, Shelf, Notes, Controls, Today }
+public enum IslandPage { Media, Focus, Shelf, Notes, Controls, Today, Notifications }
 public enum SystemHudKind { Volume, Brightness }
 public enum ActivityKind { Media, Focus }
 public sealed record IslandActivity(ActivityKind Kind, int Priority, string Label);
@@ -98,6 +98,7 @@ public sealed class IslandStateMachine(IClock clock)
         noticeUntil = null; Retarget(IslandState.Expanded);
     }
     public void Select(IslandPage page) => Expand(page);
+    public void ClearNotice(){NoticeTitle=NoticeDetail="";noticeUntil=null;}
     public void Collapse() { noticeUntil = null; Retarget(Resting); }
     public void SetHidden(bool hidden) { noticeUntil = null; Retarget(hidden ? IslandState.Hidden : Resting); }
     public void ShowSystemHud(SystemHudKind kind,double value,bool muted=false)
