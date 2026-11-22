@@ -1,0 +1,7 @@
+# Friendly eye pair
+
+Only the eye layer changed in this update. The supplied video was inspected locally as a visual reference. The app independently draws two white vector eyes, with curved happy smiles, curious pupils, subtle catchlights and natural synchronized blinks. The video, its audio, mouth, eyebrow decorations, sparkles, surrounding interface and depicted source code are not bundled or copied.
+
+The pair follows the pointer using transient GetCursorPos coordinates. It reacts happily when the pointer approaches the island and briefly after a blink. No screen pixels, app text, browsing activity or camera feed are read. Pointer coordinates remain transient in memory. While motion is active, the existing WPF composition cadence and elapsed-time spring integration drive gaze and expression. Between movements/blinks the layer sleeps; a lightweight attention check detects pointer changes. Night mode softens motion and reduced-motion mode uses a static friendly expression.
+
+Validation: the actual WPF island was run and 150 own-window frames were recorded. Image inspection verified two separate eye shapes, curious and happy expressions, and a natural blink. The source and reference video were kept separate; only original vector implementation and own-app test captures are delivered. The existing 109-test suite also passes. No new 120 Hz performance claim is made by this preview recording, which is sampled at 20 FPS.

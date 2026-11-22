@@ -136,7 +136,7 @@ public partial class OverlayWindow : Window
         Glass.Frame(paintWidth,paintHeight,paintRadius,alpha,reveal,clock.Elapsed.TotalSeconds,hover.Position,progress.Position,noticeAlpha,light,top.Position,hud.Position,hudValue.Position,Math.Clamp(nightBlend.Position,0,1));
         var compactGlyph=Smooth((105-paintHeight)/45)*Smooth((paintHeight-16)/22)*(1-noticeAlpha)*(1-Math.Clamp(hud.Position,0,1));
         CompactEye.Opacity=alpha*Math.Clamp(noticeAlpha+((model.MediaArtwork is not null&&model.MediaAvailable)?0:compactGlyph),0,1)*(1-.2*Math.Clamp(nightBlend.Position,0,1));
-        Canvas.SetLeft(CompactEye,Glass.Bounds.X+(noticeAlpha>.5?21:16));Canvas.SetTop(CompactEye,Glass.Bounds.Y+(noticeAlpha>.5?21:paintHeight/2-9));
+        Canvas.SetLeft(CompactEye,Glass.Bounds.X+11);Canvas.SetTop(CompactEye,Glass.Bounds.Y+(noticeAlpha>.5?19:paintHeight/2-11));
         HitPad.Width=paintWidth;HitPad.Height=Math.Max(14,paintHeight);HitPad.CornerRadius=new(paintRadius);Canvas.SetLeft(HitPad,(760-paintWidth)/2);Canvas.SetTop(HitPad,top.Position);
         HitPad.IsHitTestVisible=Machine.Target!=IslandState.Hidden;
         HitPad.Opacity=alpha;

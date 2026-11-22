@@ -5,7 +5,7 @@ A native ARM64 desktop island for Windows: a compact floating pill that expands 
 
 ## Living monochrome island · 120 Hz
 
-[Current design and measured performance](docs/LIVE-120HZ.md): original animated eye, monochrome materials, native headphone connection cards and persistent night mode. Night mode is available in Sound controls, the tray and Appearance. The display must be configured for 120 Hz to target 8.33 ms; exact per-frame timing is not guaranteed.
+[Current design and measured performance](docs/LIVE-120HZ.md): two friendly animated eyes, monochrome materials, native headphone connection cards and persistent night mode. Night mode is available in Sound controls, the tray and Appearance. The display must be configured for 120 Hz to target 8.33 ms; exact per-frame timing is not guaranteed.
 
 ## Notification inbox
 
