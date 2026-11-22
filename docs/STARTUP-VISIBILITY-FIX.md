@@ -1,0 +1,1 @@
+Startup visibility fix: new launches restore ShowOverlay=true. Open island persists the visible preference. Five-second startup reveal precedes normal maximized/fullscreen auto-stow. Taskbar customization remains disabled. Validated 95 unit checks and real WPF launch/hide/reopen/persistence probe; no reboot was performed.

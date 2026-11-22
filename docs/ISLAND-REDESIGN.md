@@ -1,0 +1,9 @@
+# Island-first redesign
+
+The previous WPF UI opened a 1140×780 control center at startup. Its 460×76 overlay was a fixed DockPanel, with one 180 ms opacity animation. There was no shape state machine, velocity-preserving spring, timed-notification arbitration, outside-click handling or coordinated content reveal. A whole-window resize would also have added native resize/layout work every animation frame.
+
+The replacement uses one retained transparent topmost host, with an animated rounded surface inside it. Native window placement changes only for monitor/DPI/scale configuration. Geometry, progress, content opacity, translation and icon motion share a CompositionTarget.Rendering clock. Springs use an analytic solution of the damped harmonic oscillator; stiffness/damping/mass are configurable and retargeting preserves velocity. Rendering callbacks detach when motion settles; ongoing media/focus work remains event/timer-driven.
+
+IslandStateMachine owns Idle/Hover/Expanded/Notification/PersistentActivity/Transition/Hidden intent. It arbitrates simultaneous media and focus activities and restores a previous expanded state after a timed notification. Media/focus/files/notes/controls are retained activity views. Sensitive/network services remain unchanged and offline by default. Settings are a separately opened utility window, never the startup product.
+
+The glass finish is original vector artwork: deep translucent black, cool edge light, faint specular highlights, soft layered shadows and pointer-responsive sheen. It does not capture the desktop and is not marketed as OS-level backdrop refraction. WPF requests its normal hardware rendering path; reported rendering tier indicates capability, not proof of every operation executing on the GPU. Actual composition callback intervals and update costs are recorded by the visual test harness; they are not GPU presentation measurements or a guaranteed minimum FPS.

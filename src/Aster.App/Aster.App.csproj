@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup>
+  <OutputType>WinExe</OutputType><TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+  <UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><ImplicitUsings>disable</ImplicitUsings>
+  <RuntimeIdentifier>win-arm64</RuntimeIdentifier><PlatformTarget>ARM64</PlatformTarget>
+  <ApplicationManifest>app.manifest</ApplicationManifest><ApplicationIcon>Assets/aster.ico</ApplicationIcon>
+  <!-- WPF owns DPI awareness. WinForms is used only for NotifyIcon and Screen, not window startup. -->
+  <NoWarn>$(NoWarn);WFO0003</NoWarn>
+ </PropertyGroup>
+ <ItemGroup><ProjectReference Include="../Aster.Core/Aster.Core.csproj"/><ProjectReference Include="../Aster.Infrastructure/Aster.Infrastructure.csproj"/><ProjectReference Include="../Aster.Platform.Windows/Aster.Platform.Windows.csproj"/></ItemGroup>
+</Project>
